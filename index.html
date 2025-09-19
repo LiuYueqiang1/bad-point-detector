@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>坏点检测工具 - 在线版</title>
+    <title>坏点检测上位机</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -48,7 +48,7 @@
                 @apply bg-light p-2 rounded text-sm border border-gray-200;
             }
             .debug-panel {
-                @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-80; /* 增大高度 */
+                @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-80;
             }
         }
     </style>
@@ -59,9 +59,9 @@
         <header class="mb-6">
             <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center gap-3">
                 <i class="fa fa-search-plus text-primary"></i>
-                坏点检测工具
+                坏点检测上位机
             </h1>
-            <p class="text-gray-500 mt-1">在线RAW图像坏点检测与标记工具 | 支持自动检测和手动标记</p>
+            <p class="text-gray-500 mt-1">像素级清晰显示 · 全范围对比度拉伸 · 坏点精准检测</p>
         </header>
 
         <!-- 主内容区域 -->
@@ -152,6 +152,58 @@
                         </button>
                     </div>
                 </div>
+
+                <!-- 图像增强 -->
+                <div class="control-panel">
+                    <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">图像优化</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">亮度</label>
+                            <div class="flex items-center gap-2">
+                                <input type="range" id="brightnessSlider" min=-100 max=100 value=0
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="brightnessValue" class="text-sm font-medium min-w-[40px] text-center">0</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">对比度</label>
+                            <div class="flex items-center gap-2">
+                                <input type="range" id="contrastSlider" min=50 max=200 value=100
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="contrastValue" class="text-sm font-medium min-w-[40px] text-center">100%</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">伽马校正</label>
+                            <div class="flex items-center gap-2">
+                                <input type="range" id="gammaSlider" min=0.1 max=3.0 step=0.1 value=1.0
+                                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="gammaValue" class="text-sm font-medium min-w-[40px] text-center">1.0</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">显示范围</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label class="block text-xs text-gray-500">最小值</label>
+                                    <input type="number" id="minRangeInput" class="w-full text-sm border rounded px-2 py-1" value="0" min="0" max="65535">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500">最大值</label>
+                                    <input type="number" id="maxRangeInput" class="w-full text-sm border rounded px-2 py-1" value="4095" min="1" max="65535">
+                                </div>
+                            </div>
+                        </div>
+
+                        <button id="resetEnhanceButton" class="btn-secondary w-full text-xs py-1">
+                            <i class="fa fa-refresh"></i> 重置参数
+                        </button>
+                    </div>
+                </div>
+
             </div>
 
             <!-- 右侧图像显示和状态 -->
@@ -196,7 +248,7 @@
                     <p>最小值: -, 最大值: -, 1%分位: -, 99%分位: -</p>
                 </div>
 
-                <!-- 坏点列表面板 -->
+                <!-- 坏点列表面板（替换原全黑提示） -->
                 <div class="debug-panel" id="badPointListPanel">
                     <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
                     <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
@@ -204,5 +256,948 @@
             </div>
         </div>
 
-        <!-- 使用说明 -->
-        <div class="mt-6 bg-white p-4 rounded-lg border border-gray-200">
+        <!-- 页脚 -->
+        <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
+            <p>坏点检测上位机 &copy; 2025_v3</p>
+        </footer>
+    </div>
+
+    <script>
+        // 全局变量
+        let imageData = null;          // 原始图像数据（16位）
+        let originalData = null;       // 原始字节数据
+        let width = 640;               // 图像宽度
+        let height = 512;              // 图像高度
+        let autoBadPoints = new Set(); // 自动检测的坏点
+        let manualBadPoints = new Set(); // 手动标记的坏点
+        let isMarkingMode = false;     // 是否处于手动标记模式
+        let currentX = 0;              // 当前标记位置X
+        let currentY = 0;              // 当前标记位置Y
+        let threshold = 50;            // 差异阈值
+        let rowMajorOrder = true;      // 是否行优先存储
+        let littleEndian = false;      // 是否小端字节序
+        let imageStats = { min: 0, max: 0, p1: 0, p99: 0 }; // 图像统计信息
+
+        // 图像优化参数
+        let brightness = 0;            // 亮度调整 (-100至+100)
+        let contrast = 100;            // 对比度调整 (50至200%)
+        let gamma = 1.0;               // 伽马校正 (0.1至3.0)
+        let displayMin = 0;            // 显示范围最小值
+        let displayMax = 4095;         // 显示范围最大值
+
+        // 画布相关变量
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        let scale = 1;                 // 缩放比例
+        let offsetX = 0;               // 平移X偏移
+        let offsetY = 0;               // 平移Y偏移
+        let isDragging = false;        // 是否正在拖动
+        let lastX, lastY;              // 上一次鼠标位置
+        let imageBitmap = null;        // 用于绘制的图像（已处理为8位）
+        let viewModeIndicator = document.getElementById('viewModeIndicator');
+        let markModeIndicator = document.getElementById('markModeIndicator');
+        let debugPanel = document.getElementById('debugPanel');
+        let badPointListPanel = document.getElementById('badPointListPanel'); // 坏点列表面板
+
+        // DOM元素
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const fileInfo = document.getElementById('fileInfo');
+        const widthInput = document.getElementById('widthInput');
+        const heightInput = document.getElementById('heightInput');
+        const applySizeButton = document.getElementById('applySizeButton');
+        const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
+        const littleEndianCheckbox = document.getElementById('littleEndian');
+        const noImageHint = document.getElementById('noImageHint');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const detectButton = document.getElementById('detectButton');
+        const saveButton = document.getElementById('saveButton');
+        const startMarkingButton = document.getElementById('startMarkingButton');
+        const clearManualButton = document.getElementById('clearManualButton');
+        const thresholdSlider = document.getElementById('thresholdSlider');
+        const thresholdValue = document.getElementById('thresholdValue');
+        const autoBadCount = document.getElementById('autoBadCount');
+        const manualBadCount = document.getElementById('manualBadCount');
+        const totalBadCount = document.getElementById('totalBadCount');
+        const currentXEl = document.getElementById('currentX');
+        const currentYEl = document.getElementById('currentY');
+        const currentValueEl = document.getElementById('currentValue');
+        const neighborhoodSelect = document.getElementById('neighborhoodSelect');
+        const autoAdjustButton = document.getElementById('autoAdjustButton');
+        const minRangeInput = document.getElementById('minRangeInput');
+        const maxRangeInput = document.getElementById('maxRangeInput');
+
+        // 图像优化控件
+        const brightnessSlider = document.getElementById('brightnessSlider');
+        const brightnessValue = document.getElementById('brightnessValue');
+        const contrastSlider = document.getElementById('contrastSlider');
+        const contrastValue = document.getElementById('contrastValue');
+        const gammaSlider = document.getElementById('gammaSlider');
+        const gammaValue = document.getElementById('gammaValue');
+        const resetEnhanceButton = document.getElementById('resetEnhanceButton');
+
+        // 初始化
+        function init() {
+            resizeCanvas();
+            setupEventListeners();
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            // 监听窗口大小变化，调整画布尺寸
+            window.addEventListener('resize', resizeCanvas);
+
+            // 阈值调整
+            thresholdSlider.addEventListener('input', (e) => {
+                threshold = parseInt(e.target.value);
+                thresholdValue.textContent = threshold;
+            });
+
+            // 亮度调整
+            brightnessSlider.addEventListener('input', (e) => {
+                brightness = parseInt(e.target.value);
+                brightnessValue.textContent = brightness;
+                if (imageData) {
+                    updateImage();
+                }
+            });
+
+            // 对比度调整
+            contrastSlider.addEventListener('input', (e) => {
+                contrast = parseInt(e.target.value);
+                contrastValue.textContent = `${contrast}%`;
+                if (imageData) {
+                    updateImage();
+                }
+            });
+
+            // 伽马调整
+            gammaSlider.addEventListener('input', (e) => {
+                gamma = parseFloat(e.target.value);
+                gammaValue.textContent = gamma.toFixed(1);
+                if (imageData) {
+                    updateImage();
+                }
+            });
+
+            // 显示范围调整
+            minRangeInput.addEventListener('change', (e) => {
+                displayMin = parseInt(e.target.value);
+                if (imageData) {
+                    updateImage();
+                }
+            });
+
+            maxRangeInput.addEventListener('change', (e) => {
+                displayMax = parseInt(e.target.value);
+                if (imageData) {
+                    updateImage();
+                }
+            });
+
+            // 重置优化参数
+            resetEnhanceButton.addEventListener('click', resetEnhanceParams);
+
+            // 自动调整按钮
+            autoAdjustButton.addEventListener('click', autoAdjustImage);
+
+            // 行优先存储选项
+            rowMajorOrderCheckbox.addEventListener('change', (e) => {
+                rowMajorOrder = e.target.checked;
+                if (originalData) {
+                    reloadImageData();
+                }
+            });
+
+            // 大小端选择
+            littleEndianCheckbox.addEventListener('change', (e) => {
+                littleEndian = e.target.checked;
+                if (originalData) {
+                    reloadImageData();
+                }
+            });
+
+            // 应用尺寸按钮
+            applySizeButton.addEventListener('click', () => {
+                const newWidth = parseInt(widthInput.value);
+                const newHeight = parseInt(heightInput.value);
+
+                if (newWidth > 0 && newHeight > 0) {
+                    width = newWidth;
+                    height = newHeight;
+                    if (originalData) {
+                        reloadImageData();
+                    }
+                } else {
+                    alert('请输入有效的宽度和高度');
+                }
+            });
+
+            // 加载RAW文件
+            fileInput.addEventListener('change', handleFileSelect);
+
+            // 自动检测坏点
+            detectButton.addEventListener('click', detectBadPoints);
+
+            // 开始手动标记
+            startMarkingButton.addEventListener('click', toggleMarkingMode);
+
+            // 清除手动标记
+            clearManualButton.addEventListener('click', clearManualMarkings);
+
+            // 保存结果
+            saveButton.addEventListener('click', saveResults);
+
+            // 鼠标事件处理
+            setupCanvasEvents();
+        }
+
+        // 初始化画布尺寸
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            if (imageBitmap) {
+                drawCanvas();
+            }
+        }
+
+        // 设置画布事件
+        function setupCanvasEvents() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleMouseWheel);
+            window.addEventListener('keydown', handleKeyDown);
+        }
+
+        // 重置优化参数
+        function resetEnhanceParams() {
+            brightness = 0;
+            contrast = 100;
+            gamma = 1.0;
+
+            brightnessSlider.value = brightness;
+            brightnessValue.textContent = brightness;
+            contrastSlider.value = contrast;
+            contrastValue.textContent = `${contrast}%`;
+            gammaSlider.value = gamma;
+            gammaValue.textContent = gamma.toFixed(1);
+
+            if (imageData) {
+                updateImage();
+            }
+        }
+
+        // 自动调整图像
+        function autoAdjustImage() {
+            if (!imageData) return;
+
+            // 使用1%和99%分位数作为显示范围
+            displayMin = imageStats.p1;
+            displayMax = imageStats.p99;
+
+            minRangeInput.value = displayMin;
+            maxRangeInput.value = displayMax;
+
+            updateImage();
+        }
+
+        // 重新加载图像数据
+        function reloadImageData() {
+            if (!originalData) return;
+
+            showLoading();
+
+            try {
+                // 计算总像素数
+                const totalPixels = width * height;
+
+                // 转换字节序并存储图像数据
+                imageData = convertEndianness(originalData, totalPixels);
+
+                // 计算图像统计信息
+                calculateImageStats();
+
+                // 更新图像显示
+                updateImage();
+
+                resetView();
+                hideLoading();
+            } catch (error) {
+                console.error('重新加载图像失败:', error);
+                hideLoading();
+            }
+        }
+
+        // 转换字节序
+        function convertEndianness(byteData, totalPixels) {
+            const result = new Uint16Array(totalPixels);
+            const byteView = new Uint8Array(byteData);
+
+            // 确保有足够的数据
+            if (byteView.length < totalPixels * 2) {
+                throw new Error(`数据不足：需要 ${totalPixels * 2} 字节，但只提供了 ${byteView.length} 字节`);
+            }
+
+            for (let i = 0; i < totalPixels; i++) {
+                const byteOffset = i * 2;
+
+                if (littleEndian) {
+                    // 小端模式：低字节在前 (LSB first)
+                    result[i] = (byteView[byteOffset + 1] << 8) | byteView[byteOffset];
+                } else {
+                    // 大端模式：高字节在前 (MSB first)
+                    result[i] = (byteView[byteOffset] << 8) | byteView[byteOffset + 1];
+                }
+            }
+
+            return result;
+        }
+
+        // 处理文件选择
+        async function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            showLoading();
+            fileName.textContent = file.name;
+            fileInfo.classList.remove('hidden');
+
+            try {
+                // 读取原始字节数据
+                const arrayBuffer = await readFileAsync(file);
+                originalData = arrayBuffer;
+
+                // 使用用户指定的尺寸
+                width = parseInt(widthInput.value);
+                height = parseInt(heightInput.value);
+
+                // 转换字节序并存储图像数据
+                const totalPixels = width * height;
+                imageData = convertEndianness(originalData, totalPixels);
+
+                // 计算图像统计信息
+                calculateImageStats();
+
+                // 自动调整显示范围
+                autoAdjustImage();
+
+                // 重置状态
+                autoBadPoints.clear();
+                manualBadPoints.clear();
+                updateBadCount();
+                updateBadPointList(); // 重置坏点列表
+
+                // 创建图像并绘制
+                updateImage();
+                resetView();
+
+                // 启用按钮
+                detectButton.disabled = false;
+                startMarkingButton.disabled = false;
+                saveButton.disabled = false;
+                clearManualButton.disabled = false;
+                autoAdjustButton.disabled = false;
+
+                noImageHint.classList.add('hidden');
+                viewModeIndicator.classList.remove('hidden');
+            } catch (error) {
+                console.error('加载文件失败:', error);
+                alert('加载文件失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 计算图像统计信息
+        function calculateImageStats() {
+            if (!imageData) return;
+
+            // 复制数据并排序
+            const sortedValues = new Uint16Array(imageData);
+            sortedValues.sort();
+
+            const minValue = sortedValues[0];
+            const maxValue = sortedValues[sortedValues.length - 1];
+            const p1 = sortedValues[Math.floor(sortedValues.length * 0.01)];
+            const p99 = sortedValues[Math.floor(sortedValues.length * 0.99)];
+
+            // 保存统计信息
+            imageStats = { min: minValue, max: maxValue, p1: p1, p99: p99 };
+
+            debugPanel.innerHTML = `
+                <p class="font-medium mb-1">图像统计 (${width}×${height}):</p>
+                <p>最小值: ${minValue}, 最大值: ${maxValue}</p>
+                <p>1%分位: ${p1}, 99%分位: ${p99}</p>
+                <p class="text-xs text-gray-400">提示：若最大值<100，可能字节序/存储顺序错误</p>
+            `;
+        }
+
+        // 更新图像显示
+        async function updateImage() {
+            if (!imageData) return;
+
+            showLoading();
+
+            try {
+                await createImageBitmapFromData();
+                drawCanvas();
+                hideLoading();
+            } catch (error) {
+                console.error('更新图像失败:', error);
+                hideLoading();
+            }
+        }
+
+        // 从原始数据创建图像
+        async function createImageBitmapFromData() {
+            // 创建RGBA图像数据
+            const rgbaData = new Uint8ClampedArray(width * height * 4);
+            const contrastFactor = contrast / 100;
+            const brightnessOffset = brightness * 2.55; // -100到100映射到-255到255
+
+            // 计算显示范围
+            const range = Math.max(1, displayMax - displayMin);
+
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    // 根据存储顺序计算索引
+                    let index;
+                    if (rowMajorOrder) {
+                        index = y * width + x;
+                    } else {
+                        index = x * height + y;
+                    }
+
+                    // 获取原始像素值
+                    let value = imageData[index];
+
+                    // 应用显示范围限制
+                    value = Math.max(displayMin, Math.min(displayMax, value));
+
+                    // 归一化到0-1范围
+                    let normalized = (value - displayMin) / range;
+
+                    // 应用伽马校正
+                    normalized = Math.pow(normalized, 1 / gamma);
+
+                    // 应用对比度调整
+                    normalized = 0.5 + contrastFactor * (normalized - 0.5);
+
+                    // 应用亮度调整
+                    normalized += brightnessOffset / 255;
+
+                    // 限制在0-1范围内
+                    normalized = Math.max(0, Math.min(1, normalized));
+
+                    // 转换为字节值
+                    const byteValue = Math.floor(normalized * 255);
+
+                    // 设置RGBA值（灰度图像）
+                    const rgbaIndex = (y * width + x) * 4;
+                    rgbaData[rgbaIndex] = byteValue;
+                    rgbaData[rgbaIndex + 1] = byteValue;
+                    rgbaData[rgbaIndex + 2] = byteValue;
+                    rgbaData[rgbaIndex + 3] = 255;
+                }
+            }
+
+            // 创建ImageData对象
+            const imageDataObj = new ImageData(rgbaData, width, height);
+
+            // 创建ImageBitmap（用于后续绘制）
+            imageBitmap = await createImageBitmap(imageDataObj);
+        }
+
+        // 绘制画布
+        function drawCanvas() {
+            if (!imageBitmap) return;
+
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 应用变换
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(imageBitmap, 0, 0);
+
+            // 绘制自动检测的坏点（红色）
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            autoBadPoints.forEach(point => {
+                const [y, x] = point.split(',').map(Number);
+                ctx.beginPath();
+                ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 绘制手动标记的坏点（蓝色）
+            ctx.fillStyle = 'rgba(0, 204, 255, 1)';
+            manualBadPoints.forEach(point => {
+                const [y, x] = point.split(',').map(Number);
+                ctx.beginPath();
+                ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 绘制当前标记位置（绿色十字）
+            if (isMarkingMode) {
+                ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
+                ctx.lineWidth = 1 / scale;
+
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(currentX - 3 / scale + 0.5, currentY + 0.5);
+                ctx.lineTo(currentX + 3 / scale + 0.5, currentY + 0.5);
+                ctx.stroke();
+
+                // 垂直线
+                ctx.beginPath();
+                ctx.moveTo(currentX + 0.5, currentY - 3 / scale + 0.5);
+                ctx.lineTo(currentX + 0.5, currentY + 3 / scale + 0.5);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+        }
+
+        // 自动检测坏点（检测后更新坏点列表）
+        async function detectBadPoints() {
+            if (!imageData) return;
+
+            showLoading();
+            detectButton.disabled = true;
+
+            try {
+                const neighborhoodSize = parseInt(neighborhoodSelect.value);
+                const halfNeighborhood = Math.floor(neighborhoodSize / 2);
+                const badPoints = new Set();
+
+                // 坏点检测算法
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const centerIndex = rowMajorOrder ? (y * width + x) : (x * height + y);
+                        const centerValue = imageData[centerIndex];
+                        let aboveThresholdCount = 0;
+                        let validNeighbors = 0;
+
+                        // 检查邻域
+                        for (let ny = -halfNeighborhood; ny <= halfNeighborhood; ny++) {
+                            for (let nx = -halfNeighborhood; nx <= halfNeighborhood; nx++) {
+                                if (nx === 0 && ny === 0) continue; // 跳过中心像素
+
+                                const neighborX = x + nx;
+                                const neighborY = y + ny;
+
+                                // 检查边界
+                                if (neighborX >= 0 && neighborX < width &&
+                                    neighborY >= 0 && neighborY < height) {
+                                    const neighborIndex = rowMajorOrder ?
+                                        (neighborY * width + neighborX) :
+                                        (neighborX * height + neighborY);
+                                    const neighborValue = imageData[neighborIndex];
+
+                                    if (Math.abs(centerValue - neighborValue) > threshold) {
+                                        aboveThresholdCount++;
+                                    }
+                                    validNeighbors++;
+                                }
+                            }
+                        }
+
+                        // 如果超过一半的邻域点与中心点差异超过阈值，则标记为坏点
+                        if (validNeighbors > 0 && aboveThresholdCount > validNeighbors / 2) {
+                            badPoints.add(`${y},${x}`);
+                        }
+                    }
+                }
+
+                autoBadPoints = badPoints;
+                updateBadCount();
+                updateBadPointList(); // 检测后更新坏点列表
+                drawCanvas();
+            } catch (error) {
+                console.error('检测坏点失败:', error);
+                alert('检测坏点失败: ' + error.message);
+            } finally {
+                detectButton.disabled = false;
+                hideLoading();
+            }
+        }
+
+        // 切换标记模式（手动标记后更新坏点列表）
+        function toggleMarkingMode() {
+            if (!imageData) return;
+
+            if (isMarkingMode) {
+                // 退出标记模式
+                isMarkingMode = false;
+                startMarkingButton.innerHTML = '<i class="fa fa-mouse-pointer"></i> 开始手动标记';
+                startMarkingButton.classList.remove('bg-primary', 'text-white');
+                startMarkingButton.classList.add('border', 'border-gray-300', 'hover:bg-gray-100');
+                currentXEl.textContent = '-';
+                currentYEl.textContent = '-';
+                currentValueEl.textContent = '-';
+                document.body.style.cursor = '';
+                viewModeIndicator.classList.remove('hidden');
+                markModeIndicator.classList.add('hidden');
+            } else {
+                // 进入标记模式
+                isMarkingMode = true;
+                startMarkingButton.innerHTML = '<i class="fa fa-stop"></i> 退出手动标记';
+                startMarkingButton.classList.remove('border', 'border-gray-300', 'hover:bg-gray-100');
+                startMarkingButton.classList.add('bg-primary', 'text-white');
+
+                // 设置初始位置为中心
+                currentX = Math.floor(width / 2);
+                currentY = Math.floor(height / 2);
+                updateCurrentPositionInfo();
+                document.body.style.cursor = 'crosshair';
+                viewModeIndicator.classList.add('hidden');
+                markModeIndicator.classList.remove('hidden');
+            }
+
+            drawCanvas();
+        }
+
+        // 清除手动标记（清除后更新坏点列表）
+        function clearManualMarkings() {
+            if (confirm('确定要清除所有手动标记的坏点吗？')) {
+                manualBadPoints.clear();
+                updateBadCount();
+                updateBadPointList(); // 清除后更新坏点列表
+                drawCanvas();
+            }
+        }
+
+        // 保存结果（坏点标记值改为0x1000）
+        function saveResults() {
+            if (!imageData) return;
+
+            showLoading();
+
+            try {
+                // 计算总像素数和字节数
+                const totalPixels = width * height;
+                const totalBytes = totalPixels * 2;
+
+                // 创建坏点标志数据
+                const badFlagData = new Uint16Array(totalPixels);
+
+                // 合并自动和手动标记的坏点
+                const allBadPoints = new Set([...autoBadPoints, ...manualBadPoints]);
+
+                // 核心修改：坏点标记值从0x8000改为0x1000
+                allBadPoints.forEach(point => {
+                    const [y, x] = point.split(',').map(Number);
+                    let index;
+
+                    if (rowMajorOrder) {
+                        index = y * width + x;
+                    } else {
+                        index = x * height + y;
+                    }
+
+                    badFlagData[index] = 0x1000; // 原0x8000，已改为0x1000
+                });
+
+                // 根据字节序转换为字节数据
+                const byteData = new Uint8Array(totalBytes);
+                for (let i = 0; i < totalPixels; i++) {
+                    const byteOffset = i * 2;
+                    const value = badFlagData[i];
+
+                    if (littleEndian) {
+                        byteData[byteOffset] = value & 0xFF;
+                        byteData[byteOffset + 1] = (value >> 8) & 0xFF;
+                    } else {
+                        byteData[byteOffset] = (value >> 8) & 0xFF;
+                        byteData[byteOffset + 1] = value & 0xFF;
+                    }
+                }
+
+                // 创建Blob并下载
+                const blob = new Blob([byteData.buffer], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'bad_points.bin';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error('保存文件失败:', error);
+                alert('保存文件失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 鼠标按下事件
+        function handleMouseDown(e) {
+            if (!imageData) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 计算图像坐标
+            const imgX = Math.floor((mouseX - offsetX) / scale);
+            const imgY = Math.floor((mouseY - offsetY) / scale);
+
+            if (isMarkingMode) {
+                // 手动标记模式下点击更新位置
+                if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+                    currentX = imgX;
+                    currentY = imgY;
+                    updateCurrentPositionInfo();
+                    drawCanvas();
+                }
+            } else {
+                // 开始拖动
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+                canvas.style.cursor = 'grabbing';
+            }
+        }
+
+        // 鼠标移动事件
+        function handleMouseMove(e) {
+            if (!imageData) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isDragging) {
+                // 计算偏移量
+                const dx = mouseX - lastX;
+                const dy = mouseY - lastY;
+                offsetX += dx;
+                offsetY += dy;
+                lastX = mouseX;
+                lastY = mouseY;
+                drawCanvas();
+                return;
+            }
+
+            // 更新像素信息
+            const x = Math.floor((mouseX - offsetX) / scale);
+            const y = Math.floor((mouseY - offsetY) / scale);
+
+            if (x >= 0 && x < width && y >= 0 && y < height) {
+                const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+                const value = imageData[index];
+                currentXEl.textContent = x;
+                currentYEl.textContent = y;
+                currentValueEl.textContent = value;
+            } else {
+                currentXEl.textContent = '-';
+                currentYEl.textContent = '-';
+                currentValueEl.textContent = '-';
+            }
+        }
+
+        // 鼠标释放事件
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        // 鼠标滚轮事件
+        function handleMouseWheel(e) {
+            if (!imageData) return;
+            e.preventDefault();
+
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 计算鼠标在图像上的位置
+            const imgX = (mouseX - offsetX) / scale;
+            const imgY = (mouseY - offsetY) / scale;
+
+            // 缩放因子
+            const zoomIntensity = 0.1;
+            if (e.deltaY < 0) {
+                scale *= (1 + zoomIntensity);
+            } else {
+                scale /= (1 + zoomIntensity);
+            }
+
+            // 限制缩放范围
+            scale = Math.min(Math.max(0.1, scale), 10);
+
+            // 调整偏移量
+            offsetX = mouseX - imgX * scale;
+            offsetY = mouseY - imgY * scale;
+
+            drawCanvas();
+        }
+
+        // 键盘事件（手动标记后更新坏点列表）
+        function handleKeyDown(e) {
+            if (!isMarkingMode || !imageData) return;
+
+            let moved = false;
+
+            // 方向键移动
+            switch (e.key) {
+                case 'ArrowUp':
+                    if (currentY > 0) {
+                        currentY--;
+                        moved = true;
+                    }
+                    e.preventDefault();
+                    break;
+                case 'ArrowDown':
+                    if (currentY < height - 1) {
+                        currentY++;
+                        moved = true;
+                    }
+                    e.preventDefault();
+                    break;
+                case 'ArrowLeft':
+                    if (currentX > 0) {
+                        currentX--;
+                        moved = true;
+                    }
+                    e.preventDefault();
+                    break;
+                case 'ArrowRight':
+                    if (currentX < width - 1) {
+                        currentX++;
+                        moved = true;
+                    }
+                    e.preventDefault();
+                    break;
+                case ' ': // 空格键标记/取消标记
+                    const point = `${currentY},${currentX}`;
+                    if (manualBadPoints.has(point)) {
+                        manualBadPoints.delete(point);
+                    } else {
+                        manualBadPoints.add(point);
+                    }
+                    updateBadCount();
+                    updateBadPointList(); // 手动标记后更新坏点列表
+                    drawCanvas();
+                    e.preventDefault();
+                    break;
+                case 'Enter': // 回车键退出标记模式
+                    toggleMarkingMode();
+                    e.preventDefault();
+                    break;
+            }
+
+            // 更新位置信息和画布
+            if (moved) {
+                updateCurrentPositionInfo();
+                drawCanvas();
+            }
+        }
+
+        // 重置视图
+        function resetView() {
+            // 计算初始缩放和偏移，使图像居中显示
+            const scaleX = canvas.width / width;
+            const scaleY = canvas.height / height;
+            scale = Math.min(scaleX, scaleY);
+
+            offsetX = (canvas.width - width * scale) / 2;
+            offsetY = (canvas.height - height * scale) / 2;
+            drawCanvas();
+        }
+
+        // 更新坏点计数
+        function updateBadCount() {
+            const autoCount = autoBadPoints.size;
+            const manualCount = manualBadPoints.size;
+            const totalCount = autoCount + manualCount;
+
+            autoBadCount.textContent = autoCount;
+            manualBadCount.textContent = manualCount;
+            totalBadCount.textContent = totalCount;
+        }
+
+        // 核心新增：更新坏点列表显示（每行显示坐标+类型，自动红/手动蓝）
+        function updateBadPointList() {
+            // 收集自动检测的坏点（格式：(X,Y) 自动，红色样式）
+            const autoPoints = Array.from(autoBadPoints).map(point => {
+                const [y, x] = point.split(',').map(Number);
+                return `<div class="text-red-500">(${x}, ${y}) 自动</div>`;
+            });
+
+            // 收集手动标记的坏点（格式：(X,Y) 手动，蓝色样式）
+            const manualPoints = Array.from(manualBadPoints).map(point => {
+                const [y, x] = point.split(',').map(Number);
+                return `<div class="text-blue-500">(${x}, ${y}) 手动</div>`;
+            });
+
+            // 合并所有坏点
+            const allPoints = [...autoPoints, ...manualPoints];
+
+            // 更新面板内容
+            if (allPoints.length === 0) {
+                badPointListPanel.innerHTML = `
+                    <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
+                    <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
+                `;
+            } else {
+                badPointListPanel.innerHTML = `
+                    <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
+                    <div class="text-gray-300">共 ${allPoints.length} 个坏点：</div>
+                    <div class="flex flex-col gap-1 mt-1">${allPoints.join('')}</div>
+                `;
+            }
+        }
+
+        // 更新当前位置信息
+        function updateCurrentPositionInfo() {
+            if (!imageData) return;
+
+            currentXEl.textContent = currentX;
+            currentYEl.textContent = currentY;
+
+            // 根据存储顺序计算索引
+            let index;
+            if (rowMajorOrder) {
+                index = currentY * width + currentX;
+            } else {
+                index = currentX * height + currentY;
+            }
+
+            currentValueEl.textContent = imageData[index];
+        }
+
+        // 显示加载指示器
+        function showLoading() {
+            loadingIndicator.classList.remove('hidden');
+        }
+
+        // 隐藏加载指示器
+        function hideLoading() {
+            loadingIndicator.classList.add('hidden');
+        }
+
+        // 异步读取文件
+        function readFileAsync(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        // 初始化应用
+        init();
+    </script>
+</body>
+</html>
