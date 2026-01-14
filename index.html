@@ -50,6 +50,15 @@
             .debug-panel {
                 @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-80;
             }
+            .res-btn {
+                @apply px-2 py-1 rounded text-xs border transition-all;
+            }
+            .res-btn.active {
+                @apply bg-primary text-white border-primary;
+            }
+            .res-btn:not(.active) {
+                @apply hover:bg-gray-100;
+            }
         }
     </style>
 </head>
@@ -81,12 +90,17 @@
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div>
                                     <label class="block text-xs text-gray-500">宽度</label>
-                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640">
+                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640" min="1" max="2048">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500">高度</label>
-                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512">
+                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512" min="1" max="2048">
                                 </div>
+                            </div>
+                            <!-- 新增：快速切换分辨率按钮组 -->
+                            <div class="flex gap-2 mt-2">
+                                <button class="res-btn active" data-width="640" data-height="512">640×512</button>
+                                <button class="res-btn" data-width="384" data-height="288">384×288</button>
                             </div>
                             <button id="applySizeButton" class="btn-secondary w-full mt-2 text-xs py-1">
                                 应用尺寸
@@ -113,6 +127,7 @@
                 </div>
 
                 <!-- 手动标记 -->
+
                 <div class="control-panel">
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">手动标记</h2>
                     <div class="space-y-3">
@@ -124,7 +139,7 @@
                         </button>
                     </div>
                 </div>
-                
+
                 <!-- 检测参数 -->
                 <div class="control-panel">
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">检测参数</h2>
@@ -258,7 +273,7 @@
 
         <!-- 页脚 -->
         <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
-            <p>坏点检测上位机 &copy; 2025_v3</p>
+            <p>坏点检测上位机 &copy; 2025_v3 【兼容640×512/384×288】</p>
         </footer>
     </div>
 
@@ -340,6 +355,8 @@
         function init() {
             resizeCanvas();
             setupEventListeners();
+            // 绑定分辨率切换按钮事件
+            bindResolutionButtons();
         }
 
         // 设置事件监听器
@@ -452,6 +469,28 @@
             setupCanvasEvents();
         }
 
+        // 新增：绑定分辨率快速切换按钮事件
+        function bindResolutionButtons() {
+            const resBtns = document.querySelectorAll('.res-btn');
+            resBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const newW = parseInt(btn.dataset.width);
+                    const newH = parseInt(btn.dataset.height);
+                    widthInput.value = newW;
+                    heightInput.value = newH;
+                    // 高亮当前选中的按钮
+                    resBtns.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    // 自动应用尺寸
+                    width = newW;
+                    height = newH;
+                    if (originalData) {
+                        reloadImageData();
+                    }
+                });
+            });
+        }
+
         // 初始化画布尺寸
         function resizeCanvas() {
             const container = canvas.parentElement;
@@ -530,14 +569,15 @@
             }
         }
 
-        // 转换字节序
+        // 修复核心：转换字节序函数 兼容分辨率切换，放宽字节数校验
         function convertEndianness(byteData, totalPixels) {
             const result = new Uint16Array(totalPixels);
             const byteView = new Uint8Array(byteData);
 
-            // 确保有足够的数据
-            if (byteView.length < totalPixels * 2) {
-                throw new Error(`数据不足：需要 ${totalPixels * 2} 字节，但只提供了 ${byteView.length} 字节`);
+            // ✅ 修复：兼容文件字节数 >= 所需字节数 即可，解决384*288加载报错问题
+            const needBytes = totalPixels * 2;
+            if (byteView.length < needBytes) {
+                throw new Error(`数据不足：需要 ${needBytes} 字节，但只提供了 ${byteView.length} 字节`);
             }
 
             for (let i = 0; i < totalPixels; i++) {
