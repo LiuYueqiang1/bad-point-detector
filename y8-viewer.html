@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>原始Y8图像读取工具 (精准像素查看)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#FF7D00',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto {
+                content-visibility: auto;
+            }
+            .canvas-container {
+                @apply relative border border-gray-300 rounded-lg overflow-hidden bg-gray-100;
+            }
+            .control-panel {
+                @apply bg-white p-4 rounded-lg shadow-md;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+            }
+            .btn-secondary {
+                @apply bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+            }
+            .btn-short {
+                @apply bg-gray-50 border border-gray-300 hover:bg-gray-200 px-2 py-1 rounded text-sm transition-all;
+            }
+            .status-bar {
+                @apply bg-light p-2 rounded text-sm border border-gray-200;
+            }
+            .debug-panel {
+                @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-40;
+            }
+            .nav-hint {
+                @apply bg-accent/90 text-white px-3 py-1 rounded text-sm absolute top-2 right-2;
+            }
+            .select-hint {
+                @apply bg-blue-600/90 text-white px-3 py-1 rounded text-sm absolute top-2 right-24;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+    <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <header class="mb-6">
+            <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center gap-3">
+                <i class="fa fa-file-image-o text-primary"></i>
+                原始Y8图像读取工具 (精准像素查看)
+            </h1>
+            <p class="text-gray-500 mt-1">8bit灰度原始显示 · 像素级精准查看 · 640×512/384×288双分辨率兼容</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div class="lg:col-span-1 space-y-4">
+                <div class="control-panel">
+                    <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">文件操作</h2>
+                    <div class="space-y-3">
+                        <label class="btn-primary w-full cursor-pointer">
+                            <i class="fa fa-file-image-o"></i> 加载Y8图像文件
+                            <input type="file" id="fileInput" accept=".raw,.bin,.dat,.y8" class="hidden">
+                        </label>
+                        <div id="fileInfo" class="text-sm text-gray-500">
+                            <p id="fileName" class="truncate">未选择文件</p>
+                            <div class="grid grid-cols-2 gap-2 mt-2">
+                                <div>
+                                    <label class="block text-xs text-gray-500">宽度</label>
+                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640">
+                                </div>
+                                <div>
+                                    <label class="block text-xs text-gray-500">高度</label>
+                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512">
+                                </div>
+                            </div>
+                            <!-- 新增：双分辨率快捷按钮 -->
+                            <div class="flex gap-2 mt-2">
+                                <button id="size640512" class="btn-short w-1/2">640×512</button>
+                                <button id="size384288" class="btn-short w-1/2">384×288</button>
+                            </div>
+                            <button id="applySizeButton" class="btn-secondary w-full mt-2 text-xs py-1">
+                                应用尺寸
+                            </button>
+                            <div class="space-y-2 mt-3">
+                                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                                    <input type="checkbox" id="rowMajorOrder" checked>
+                                    <label for="rowMajorOrder" class="text-sm">行优先存储</label>
+                                </div>
+                                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200 text-gray-400">
+                                    <i class="fa fa-info-circle"></i>
+                                    <label class="text-sm">Y8格式：单字节无大小端，0=黑/255=白</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-3 space-y-4">
+                <div class="canvas-container" style="height: 600px;">
+                    <canvas id="imageCanvas" class="w-full h-full"></canvas>
+                    <div id="loadingIndicator" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
+                        <div class="bg-white p-4 rounded-lg flex items-center gap-3">
+                            <i class="fa fa-circle-o-notch fa-spin text-primary text-xl"></i>
+                            <span>加载原始图像中...</span>
+                        </div>
+                    </div>
+                    <div id="noImageHint" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                        <i class="fa fa-picture-o text-5xl mb-3"></i>
+                        <p>请加载Y8格式原始图像文件</p>
+                    </div>
+                    <div class="absolute top-2 left-2 bg-black/70 text-white px-3 py-1 rounded text-sm" id="viewModeIndicator">
+                        原始模式：滚轮缩放+左键拖动 | 点击像素选中 → 空格开启键盘导航 | ESC退出
+                    </div>
+                    <div class="nav-hint hidden" id="keyboardNavHint">
+                        <i class="fa fa-keyboard-o"></i> 键盘导航中：↑↓←→移动像素 | ESC退出
+                    </div>
+                    <div class="select-hint hidden" id="pixelSelectHint">
+                        <i class="fa fa-check-circle"></i> 已选中像素 | 按空格开启键盘导航
+                    </div>
+                </div>
+
+                <div class="status-bar">
+                    <p><span class="font-medium">当前像素信息:</span> X: <span id="currentX">-</span>, Y: <span id="currentY">-</span>, 原始灰度值: <span id="currentValue">-</span> (0~255)</p>
+                </div>
+
+                <div class="debug-panel" id="debugPanel">
+                    <p class="font-medium mb-1">图像统计 (等待加载):</p>
+                    <p>分辨率: - × - | 最小灰度: -, 最大灰度: -, 1%分位: -, 99%分位: -</p>
+                </div>
+            </div>
+        </div>
+
+        <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
+            <p>原始Y8图像读取工具 &copy; 2026 | 精准像素查看优化版</p>
+        </footer>
+    </div>
+
+    <script>
+        // 全局变量 - 纯原始Y8读取，无任何调光参数
+        let imageData = null;          // 原始图像数据（8位 Uint8Array）
+        let originalData = null;       // 原始字节数据
+        let width = 640;               // 默认分辨率 640*512
+        let height = 512;              // 默认分辨率
+        let rowMajorOrder = true;      // 是否行优先存储
+        let imageStats = { min: 0, max: 0, p1: 0, p99: 0 }; // 图像统计信息
+
+        // 画布相关变量
+        const canvas = document.getElementById('imageCanvas');
+        const ctx = canvas.getContext('2d');
+        let scale = 1;                 // 缩放比例
+        let offsetX = 0;               // 平移X偏移
+        let offsetY = 0;               // 平移Y偏移
+        let isDragging = false;        // 是否正在拖动
+        let lastX, lastY;              // 上一次鼠标位置
+        let imageBitmap = null;        // 用于绘制的原始图像
+
+        // 核心修改：新增选中状态、分离选中/导航模式
+        let isPixelSelected = false;   // 是否点击选中了像素
+        let keyboardNavMode = false;   // 是否开启键盘导航模式
+        let selectedX = -1;            // 选中的像素X坐标
+        let selectedY = -1;            // 选中的像素Y坐标
+
+        // DOM元素
+        const fileInput = document.getElementById('fileInput');
+        const fileName = document.getElementById('fileName');
+        const fileInfo = document.getElementById('fileInfo');
+        const widthInput = document.getElementById('widthInput');
+        const heightInput = document.getElementById('heightInput');
+        const applySizeButton = document.getElementById('applySizeButton');
+        const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
+        const noImageHint = document.getElementById('noImageHint');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const currentXEl = document.getElementById('currentX');
+        const currentYEl = document.getElementById('currentY');
+        const currentValueEl = document.getElementById('currentValue');
+        const debugPanel = document.getElementById('debugPanel');
+        const viewModeIndicator = document.getElementById('viewModeIndicator');
+        const keyboardNavHint = document.getElementById('keyboardNavHint');
+        const pixelSelectHint = document.getElementById('pixelSelectHint');
+        const size640512 = document.getElementById('size640512');
+        const size384288 = document.getElementById('size384288');
+
+        // 初始化
+        function init() {
+            resizeCanvas();
+            setupEventListeners();
+            viewModeIndicator.classList.add('hidden');
+        }
+
+        // 设置事件监听器
+        function setupEventListeners() {
+            window.addEventListener('resize', resizeCanvas);
+            rowMajorOrderCheckbox.addEventListener('change', (e) => {
+                rowMajorOrder = e.target.checked;
+                if (originalData) reloadImageData();
+            });
+            applySizeButton.addEventListener('click', applyCustomSize);
+            // 新增：双分辨率快捷按钮事件
+            size640512.addEventListener('click', () => { setImageSize(640, 512) });
+            size384288.addEventListener('click', () => { setImageSize(384, 288) });
+
+            fileInput.addEventListener('change', handleFileSelect);
+            setupCanvasEvents();
+            window.addEventListener('keydown', handleKeyDown);
+        }
+
+        // 新增：快速设置分辨率
+        function setImageSize(w, h) {
+            widthInput.value = w;
+            heightInput.value = h;
+            width = w;
+            height = h;
+            if (originalData) reloadImageData();
+        }
+
+        // 应用自定义尺寸
+        function applyCustomSize() {
+            const newWidth = parseInt(widthInput.value);
+            const newHeight = parseInt(heightInput.value);
+            if (newWidth > 0 && newHeight > 0) {
+                width = newWidth;
+                height = newHeight;
+                if (originalData) reloadImageData();
+            } else {
+                alert('请输入有效的宽度和高度');
+            }
+        }
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+            if (imageBitmap) drawCanvas();
+        }
+
+        // 画布交互事件（核心修改：拖动和选中/导航完全共存）
+        function setupCanvasEvents() {
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            window.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('wheel', handleMouseWheel);
+            canvas.addEventListener('mouseleave', () => {
+                if (!isPixelSelected && !keyboardNavMode) {
+                    currentXEl.textContent = '-';
+                    currentYEl.textContent = '-';
+                    currentValueEl.textContent = '-';
+                }
+            });
+        }
+
+        // 核心修改：键盘事件处理 空格开启/ESC退出
+        function handleKeyDown(e) {
+            if (!imageData) return;
+
+            // 空格：选中像素后，开启键盘导航模式
+            if(e.key === ' ' && isPixelSelected && !keyboardNavMode) {
+                e.preventDefault();
+                keyboardNavMode = true;
+                keyboardNavHint.classList.remove('hidden');
+                pixelSelectHint.classList.add('hidden');
+                drawCanvas();
+                return;
+            }
+
+            // ESC：退出键盘导航模式，保留像素选中状态
+            if(e.key === 'Escape' && keyboardNavMode) {
+                e.preventDefault();
+                keyboardNavMode = false;
+                keyboardNavHint.classList.add('hidden');
+                pixelSelectHint.classList.remove('hidden');
+                drawCanvas();
+                return;
+            }
+
+            // 键盘导航模式：方向键逐像素移动，边界限制
+            if (keyboardNavMode && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
+                e.preventDefault();
+                switch (e.key) {
+                    case 'ArrowUp': selectedY = Math.max(0, selectedY - 1); break;
+                    case 'ArrowDown': selectedY = Math.min(height - 1, selectedY + 1); break;
+                    case 'ArrowLeft': selectedX = Math.max(0, selectedX - 1); break;
+                    case 'ArrowRight': selectedX = Math.min(width - 1, selectedX + 1); break;
+                }
+                updateSelectedPixelInfo();
+                drawCanvas();
+            }
+        }
+
+        // 更新选中像素信息显示
+        function updateSelectedPixelInfo() {
+            if (selectedX < 0 || selectedY < 0 || !imageData) return;
+            const index = rowMajorOrder ? (selectedY * width + selectedX) : (selectedX * height + selectedY);
+            const grayValue = imageData[index];
+            currentXEl.textContent = selectedX;
+            currentYEl.textContent = selectedY;
+            currentValueEl.textContent = grayValue;
+        }
+
+        // 核心修复 ✅ 精准像素高亮框绘制：完美框住当前像素，无偏移
+        function drawPixelHighlight() {
+            if (selectedX < 0 || selectedY < 0 || !imageData) return;
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            ctx.strokeStyle = keyboardNavMode ? '#FF7D00' : '#165DFF';
+            // ========== 就改下面这一行 ==========
+            ctx.lineWidth = 0.5 / scale; // 原来的值是 1;
+            // ========== 修改结束 ==========
+            ctx.strokeRect(selectedX, selectedY, 1, 1);
+            ctx.restore();
+        }
+
+        function reloadImageData() {
+            if (!originalData) return;
+            showLoading();
+            try {
+                const totalPixels = width * height;
+                const byteView = new Uint8Array(originalData);
+                if (byteView.length < totalPixels) {
+                    throw new Error(`数据不足：需要 ${totalPixels} 字节，文件仅${byteView.length}字节`);
+                }
+                imageData = new Uint8Array(totalPixels);
+                for (let i = 0; i < totalPixels; i++) {
+                    imageData[i] = byteView[i];
+                }
+                calculateImageStats();
+                createOriginalImageBitmap();
+                resetView();
+                hideLoading();
+            } catch (error) {
+                console.error('重新加载图像失败:', error);
+                hideLoading();
+            }
+        }
+
+        async function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            showLoading();
+            fileName.textContent = file.name;
+            fileInfo.classList.remove('hidden');
+            viewModeIndicator.classList.add('hidden');
+            try {
+                const arrayBuffer = await readFileAsync(file);
+                originalData = arrayBuffer;
+                width = parseInt(widthInput.value);
+                height = parseInt(heightInput.value);
+                const totalPixels = width * height;
+                const byteView = new Uint8Array(originalData);
+                if (byteView.length < totalPixels) {
+                    throw new Error(`Y8文件数据不足！宽×高=${width}×${height}=${totalPixels}像素，文件仅${byteView.length}字节`);
+                }
+                imageData = new Uint8Array(totalPixels);
+                for (let i = 0; i < totalPixels; i++) {
+                    imageData[i] = byteView[i];
+                }
+                calculateImageStats();
+                createOriginalImageBitmap();
+                resetView();
+                noImageHint.classList.add('hidden');
+                viewModeIndicator.classList.remove('hidden');
+            } catch (error) {
+                console.error('加载Y8文件失败:', error);
+                alert('加载文件失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function calculateImageStats() {
+            if (!imageData) return;
+            const sortedValues = new Uint8Array(imageData);
+            sortedValues.sort();
+            const minValue = sortedValues[0];
+            const maxValue = sortedValues[sortedValues.length - 1];
+            const p1 = sortedValues[Math.floor(sortedValues.length * 0.01)];
+            const p99 = sortedValues[Math.floor(sortedValues.length * 0.99)];
+            imageStats = { min: minValue, max: maxValue, p1: p1, p99: p99 };
+            debugPanel.innerHTML = `
+                <p class="font-medium mb-1">图像统计 (${width}×${height} | Y8原始8bit灰度):</p>
+                <p>原始灰度最小值: ${minValue}, 最大值: ${maxValue}</p>
+                <p>1%分位灰度: ${p1}, 99%分位灰度: ${p99}</p>
+                <p class="text-xs text-gray-400">原始灰度标准：0=纯黑 / 255=纯白</p>
+            `;
+        }
+
+        function createOriginalImageBitmap() {
+            if (!imageData) return;
+            const rgbaData = new Uint8ClampedArray(width * height * 4);
+            for (let y = 0; y < height; y++) {
+                for (let x = 0; x < width; x++) {
+                    const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+                    const grayValue = imageData[index];
+                    const rgbaIndex = (y * width + x) * 4;
+                    rgbaData[rgbaIndex] = grayValue;
+                    rgbaData[rgbaIndex + 1] = grayValue;
+                    rgbaData[rgbaIndex + 2] = grayValue;
+                    rgbaData[rgbaIndex + 3] = 255;
+                }
+            }
+            const imageDataObj = new ImageData(rgbaData, width, height);
+            createImageBitmap(imageDataObj).then(bitmap => {
+                imageBitmap = bitmap;
+                drawCanvas();
+            });
+        }
+
+        // 画布绘制主方法
+        function drawCanvas() {
+            if (!imageBitmap) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(imageBitmap, 0, 0);
+            ctx.restore();
+            // 绘制精准高亮框
+            drawPixelHighlight();
+        }
+
+        // 核心修改 ✅ 鼠标事件：拖动和选中/导航完全共存，互不影响
+        function handleMouseDown(e) {
+            if (!imageData) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const imgX = Math.floor((mouseX - offsetX) / scale);
+            const imgY = Math.floor((mouseY - offsetY) / scale);
+
+            // 点击在图像范围内 → 选中像素
+            if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+                isPixelSelected = true;
+                selectedX = imgX;
+                selectedY = imgY;
+                pixelSelectHint.classList.remove('hidden');
+                updateSelectedPixelInfo();
+                drawCanvas();
+            }
+            // 点击在图像外 → 开启拖动
+            else {
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+                canvas.style.cursor = 'grabbing';
+            }
+            // 无论是否选中，鼠标左键都可以拖动，优先级最高
+            if(e.button === 0) {
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+            }
+        }
+
+        function handleMouseMove(e) {
+            if (!imageData) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 拖动逻辑：始终生效，和导航模式无关 ✅
+            if (isDragging) {
+                const dx = mouseX - lastX;
+                const dy = mouseY - lastY;
+                offsetX += dx;
+                offsetY += dy;
+                lastX = mouseX;
+                lastY = mouseY;
+                drawCanvas();
+                return;
+            }
+
+            // 悬浮显示像素值：非选中/导航模式下生效
+            if (!isPixelSelected && !keyboardNavMode) {
+                const x = Math.floor((mouseX - offsetX) / scale);
+                const y = Math.floor((mouseY - offsetY) / scale);
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+                    currentXEl.textContent = x;
+                    currentYEl.textContent = y;
+                    currentValueEl.textContent = imageData[index];
+                } else {
+                    currentXEl.textContent = '-';
+                    currentYEl.textContent = '-';
+                    currentValueEl.textContent = '-';
+                }
+            }
+        }
+
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        function handleMouseWheel(e) {
+            if (!imageData) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const imgX = (mouseX - offsetX) / scale;
+            const imgY = (mouseY - offsetY) / scale;
+            const zoomIntensity = 0.1;
+            scale = e.deltaY < 0 ? scale * (1 + zoomIntensity) : scale / (1 + zoomIntensity);
+            scale = Math.min(Math.max(0.1, scale), 10);
+            offsetX = mouseX - imgX * scale;
+            offsetY = mouseY - imgY * scale;
+            drawCanvas();
+        }
+
+        function resetView() {
+            const scaleX = canvas.width / width;
+            const scaleY = canvas.height / height;
+            scale = Math.min(scaleX, scaleY);
+            offsetX = (canvas.width - width * scale) / 2;
+            offsetY = (canvas.height - height * scale) / 2;
+            drawCanvas();
+        }
+
+        function showLoading() { loadingIndicator.classList.remove('hidden'); }
+        function hideLoading() { loadingIndicator.classList.add('hidden'); }
+        function readFileAsync(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
