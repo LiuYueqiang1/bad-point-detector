@@ -36,24 +36,24 @@
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center py-10">
-    <div class="container mx-auto max-w-3xl px-4">
+    <div class="container mx-auto max-w-5xl px-4">
         <!-- 标题 -->
         <header class="text-center mb-10">
             <h1 class="text-[clamp(1.8rem,4vw,3rem)] font-bold text-dark flex items-center justify-center gap-3">
-                <<i class="fa fa-wrench text-primary"></</i>
+                <i class="fa fa-wrench text-primary"></i>
                 工具导航中心
             </h1>
             <p class="text-gray-500 mt-2 text-lg">选择你需要的工具进入</p>
         </header>
 
-        <!-- 工具选项 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- 工具选项（新增第三个卡片，布局改为md:3列适配） -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <!-- 坏点查找工具 -->
             <div class="tool-card">
                 <h2 class="text-xl font-semibold text-dark mb-4">坏点查找工具</h2>
                 <p class="text-gray-500 mb-6">检测图像中的坏点、异常像素</p>
                 <a href="bad-point-detector.html" class="tool-btn">
-                    <<i class="fa fa-search"></</i>
+                    <i class="fa fa-search"></i>
                     进入工具
                 </a>
             </div>
@@ -63,7 +63,17 @@
                 <h2 class="text-xl font-semibold text-dark mb-4">Y8图像查看工具</h2>
                 <p class="text-gray-500 mb-6">查看原始Y8格式图像，精准查看像素值</p>
                 <a href="y8-viewer.html" class="tool-btn">
-                    <<i class="fa fa-image"></</i>
+                    <i class="fa fa-image"></i>
+                    进入工具
+                </a>
+            </div>
+
+            <!-- 新增：Y=K*(X-B) 计算工具 -->
+            <div class="tool-card">
+                <h2 class="text-xl font-semibold text-dark mb-4">Y=K*(X-B) 计算工具</h2>
+                <p class="text-gray-500 mb-6">Y=K*(X-B) 公式快速计算</p>
+                <a href="K_X_B.html" class="tool-btn">
+                    <i class="fa fa-calculator"></i>
                     进入工具
                 </a>
             </div>
