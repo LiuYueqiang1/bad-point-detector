@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>坏点检测上位机</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#165DFF',
+            secondary: '#36CFC9',
+            accent: '#FF7D00',
+            dark: '#1D2129',
+            light: '#F2F3F5'
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer utilities {
+      .btn-view-active {
+        @apply bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+      }
+      .content-auto { content-visibility: auto; }
+      .canvas-container {
+        @apply relative border border-gray-300 rounded-lg overflow-hidden bg-gray-100;
+      }
+      .control-panel {
+        @apply bg-white p-4 rounded-lg shadow-md;
+      }
+      .btn-primary {
+        @apply bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+      }
+      .btn-secondary {
+        @apply bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+      }
+      .btn-accent {
+        @apply bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+      }
+      .status-bar {
+        @apply bg-light p-2 rounded text-sm border border-gray-200;
+      }
+      .debug-panel {
+        @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-80;
+      }
+      .res-btn {
+        @apply px-2 py-1 rounded text-xs border transition-all;
+      }
+      .res-btn.active {
+        @apply bg-primary text-white border-primary;
+      }
+      .res-btn:not(.active) {
+        @apply hover:bg-gray-100;
+      }
+      .drop-hover {
+        @apply ring-4 ring-primary/50 bg-primary/10;
+      }
+    }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans">
+  <div class="container mx-auto px-4 py-6 max-w-7xl">
+    <!-- 标题区域 -->
+    <header class="mb-6">
+      <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center gap-3">
+        <i class="fa fa-search-plus text-primary"></i> 坏点检测上位机
+      </h1>
+      <p class="text-gray-500 mt-1">像素级清晰显示 · 全范围对比度拉伸 · 坏点精准检测 · v4.3 修复版</p>
+    </header>
+
+    <!-- 主内容区域 -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      <!-- 左侧控制面板 -->
+      <div class="lg:col-span-1 space-y-4">
+        <!-- 文件操作 -->
+        <div class="control-panel">
+          <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">文件操作</h2>
+          <div class="space-y-3">
+            <label class="btn-primary w-full cursor-pointer">
+              <i class="fa fa-file-image-o"></i> 加载RAW文件
+              <input type="file" id="fileInput" accept=".raw,.bin,.dat" class="hidden">
+            </label>
+
+            <!-- 分辨率设置：页面打开即显示 -->
+            <div id="resolutionSettings" class="text-sm text-gray-500">
+              <p class="font-medium text-dark mb-2">图像分辨率（加载时自动应用）</p>
+              <div class="grid grid-cols-2 gap-2 mb-2">
+                <div>
+                  <label class="block text-xs text-gray-500">宽度</label>
+                  <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640" min="1" max="4096">
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500">高度</label>
+                  <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512" min="1" max="4096">
+                </div>
+              </div>
+
+              <!-- 快速切换分辨率按钮组 -->
+              <div class="flex gap-2 mt-2 flex-wrap">
+                <button class="res-btn active" data-width="640" data-height="512">640×512</button>
+                <button class="res-btn" data-width="384" data-height="288">384×288</button>
+                <button class="res-btn" data-width="1280" data-height="1024">1280×1024</button>
+              </div>
+
+              <div class="space-y-2 mt-4">
+                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                  <input type="checkbox" id="rowMajorOrder" checked>
+                  <label for="rowMajorOrder" class="text-sm">行优先存储</label>
+                </div>
+                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                  <input type="checkbox" id="littleEndian">
+                  <label for="littleEndian" class="text-sm">小端字节序</label>
+                  <span class="text-[10px] text-gray-400">(默认大端)</span>
+                </div>
+              </div>
+            </div>
+
+            <button id="autoAdjustButton" class="btn-secondary w-full mt-3" disabled>
+              <i class="fa fa-adjust"></i> 自动亮度/对比度
+            </button>
+            <button id="saveButton" class="btn-accent w-full" disabled>
+              <i class="fa fa-save"></i> 保存坏点掩码
+            </button>
+          </div>
+        </div>
+
+        <!-- 手动标记 -->
+        <div class="control-panel">
+          <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">手动标记</h2>
+          <div class="space-y-3">
+            <button id="startMarkingButton" class="btn-secondary w-full" disabled>
+              <i class="fa fa-mouse-pointer"></i> 开始手动标记
+            </button>
+            <button id="clearManualButton" class="btn-secondary w-full" disabled>
+              <i class="fa fa-eraser"></i> 清除手动标记
+            </button>
+          </div>
+        </div>
+
+        <!-- 检测参数 -->
+        <div class="control-panel">
+          <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">检测参数</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">差异阈值</label>
+              <div class="flex items-center gap-2">
+                <input type="range" id="thresholdSlider" min="10" max="200" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <span id="thresholdValue" class="text-sm font-medium min-w-[40px] text-center">50</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">邻域大小</label>
+              <select id="neighborhoodSelect" class="w-full text-sm border rounded px-2 py-1">
+                <option value="3">3×3</option>
+                <option value="5" selected>5×5</option>
+                <option value="7">7×7</option>
+              </select>
+            </div>
+            <button id="detectButton" class="btn-primary w-full" disabled>
+              <i class="fa fa-magic"></i> 自动检测坏点
+            </button>
+          </div>
+        </div>
+
+        <!-- 图像优化 -->
+        <div class="control-panel">
+          <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">图像优化</h2>
+          <div class="space-y-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">亮度</label>
+              <div class="flex items-center gap-2">
+                <input type="range" id="brightnessSlider" min=-100 max=100 value=0 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <span id="brightnessValue" class="text-sm font-medium min-w-[40px] text-center">0</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">对比度</label>
+              <div class="flex items-center gap-2">
+                <input type="range" id="contrastSlider" min=50 max=200 value=100 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <span id="contrastValue" class="text-sm font-medium min-w-[40px] text-center">100%</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">伽马校正</label>
+              <div class="flex items-center gap-2">
+                <input type="range" id="gammaSlider" min=0.1 max=3.0 step=0.1 value=1.0 class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                <span id="gammaValue" class="text-sm font-medium min-w-[40px] text-center">1.0</span>
+              </div>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">显示范围</label>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="block text-xs text-gray-500">最小值</label>
+                  <input type="number" id="minRangeInput" class="w-full text-sm border rounded px-2 py-1" value="0" min="0" max="65535">
+                </div>
+                <div>
+                  <label class="block text-xs text-gray-500">最大值</label>
+                  <input type="number" id="maxRangeInput" class="w-full text-sm border rounded px-2 py-1" value="65535" min="1" max="65535">
+                </div>
+              </div>
+            </div>
+            <button id="resetEnhanceButton" class="btn-secondary w-full text-xs py-1">
+              <i class="fa fa-refresh"></i> 重置参数
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧图像显示和状态 -->
+      <div class="lg:col-span-3 space-y-4">
+        <!-- 视图控制 -->
+        <div class="control-panel">
+          <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">视图控制</h2>
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <button id="fitButton" class="btn-secondary">拟合屏幕</button>
+            <button id="actualButton" class="btn-secondary">1:1 视图</button>
+            <button id="zoomInButton" class="btn-secondary"><i class="fa fa-search-plus"></i> 放大</button>
+            <button id="zoomOutButton" class="btn-secondary"><i class="fa fa-search-minus"></i> 缩小</button>
+          </div>
+        </div>
+
+        <!-- 图像显示区域 -->
+        <div class="canvas-container" id="canvasContainer" style="height: 600px;">
+          <canvas id="imageCanvas" class="w-full h-full"></canvas>
+          <div id="loadingIndicator" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
+            <div class="bg-white p-4 rounded-lg flex items-center gap-3">
+              <i class="fa fa-circle-o-notch fa-spin text-primary text-xl"></i>
+              <span>处理中...</span>
+            </div>
+          </div>
+          <div id="noImageHint" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+            <i class="fa fa-picture-o text-5xl mb-3"></i>
+            <p class="text-lg">请加载RAW图像文件</p>
+            <p class="text-sm mt-2">或将文件拖拽到此处</p>
+          </div>
+          <div class="mode-indicator view-mode absolute top-2 left-2 bg-black/70 text-white px-3 py-1 rounded text-sm hidden" id="viewModeIndicator">查看模式（滚轮缩放·拖拽平移）</div>
+          <div class="mode-indicator mark-mode absolute top-2 left-2 bg-red-500/70 text-white px-3 py-1 rounded text-sm hidden" id="markModeIndicator">标记模式：方向键移动，空格标记，回车退出</div>
+        </div>
+
+        <!-- 状态和信息 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="status-bar">
+            <p><span class="font-medium">坏点统计:</span> 自动 <span id="autoBadCount" class="text-red-500">0</span> 个，手动 <span id="manualBadCount" class="text-blue-500">0</span> 个，总计 <span id="totalBadCount" class="text-accent">0</span> 个 <span class="text-gray-500">( <span id="badPercentage">0.0000</span>% )</span></p>
+          </div>
+          <div class="status-bar">
+            <p><span class="font-medium">当前像素:</span> X: <span id="currentX">-</span>, Y: <span id="currentY">-</span>, 值: <span id="currentValue">-</span></p>
+          </div>
+        </div>
+
+        <!-- 调试面板 -->
+        <div class="debug-panel" id="debugPanel">
+          <p class="font-medium mb-1">图像统计 (等待加载):</p>
+          <p>最小值: -, 最大值: -, 1%分位: -, 99%分位: -</p>
+        </div>
+
+        <!-- 坏点列表面板 -->
+        <div class="debug-panel overflow-auto max-h-96" id="badPointListPanel">
+          <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
+          <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 页脚 -->
+    <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
+      <p>坏点检测上位机 &copy; 2025_v4.1 【分辨率预先设置 · 拖拽加载 · 视图控制 · 坏点点击跳转 · BUG修复版】</p>
+    </footer>
+  </div>
+
+  <script>
+    // 全局变量
+    let imageData = null;
+    let originalData = null;
+    let width = 640;
+    let height = 512;
+    let autoBadPoints = new Set();
+    let manualBadPoints = new Set();
+    let isMarkingMode = false;
+    let currentX = 0;
+    let currentY = 0;
+    let threshold = 50;
+    let rowMajorOrder = true;
+    let littleEndian = false;
+    let imageStats = { min: 0, max: 0, p1: 0, p99: 0 };
+
+    // 图像优化参数
+    let brightness = 0;
+    let contrast = 100;
+    let gamma = 1.0;
+    let displayMin = 0;
+    let displayMax = 65535;
+
+    // 画布相关变量
+    const canvas = document.getElementById('imageCanvas');
+    const ctx = canvas.getContext('2d');
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let isDragging = false;
+    let lastX, lastY;
+    let imageBitmap = null;
+
+    // DOM元素
+    const fileInput = document.getElementById('fileInput');
+    const widthInput = document.getElementById('widthInput');
+    const heightInput = document.getElementById('heightInput');
+    const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
+    const littleEndianCheckbox = document.getElementById('littleEndian');
+    const noImageHint = document.getElementById('noImageHint');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const detectButton = document.getElementById('detectButton');
+    const saveButton = document.getElementById('saveButton');
+    const startMarkingButton = document.getElementById('startMarkingButton');
+    const clearManualButton = document.getElementById('clearManualButton');
+    const thresholdSlider = document.getElementById('thresholdSlider');
+    const thresholdValue = document.getElementById('thresholdValue');
+    const autoBadCount = document.getElementById('autoBadCount');
+    const manualBadCount = document.getElementById('manualBadCount');
+    const totalBadCount = document.getElementById('totalBadCount');
+    const badPercentage = document.getElementById('badPercentage');
+    const currentXEl = document.getElementById('currentX');
+    const currentYEl = document.getElementById('currentY');
+    const currentValueEl = document.getElementById('currentValue');
+    const neighborhoodSelect = document.getElementById('neighborhoodSelect');
+    const autoAdjustButton = document.getElementById('autoAdjustButton');
+    const minRangeInput = document.getElementById('minRangeInput');
+    const maxRangeInput = document.getElementById('maxRangeInput');
+    const brightnessSlider = document.getElementById('brightnessSlider');
+    const brightnessValue = document.getElementById('brightnessValue');
+    const contrastSlider = document.getElementById('contrastSlider');
+    const contrastValue = document.getElementById('contrastValue');
+    const gammaSlider = document.getElementById('gammaSlider');
+    const gammaValue = document.getElementById('gammaValue');
+    const resetEnhanceButton = document.getElementById('resetEnhanceButton');
+    const viewModeIndicator = document.getElementById('viewModeIndicator');
+    const markModeIndicator = document.getElementById('markModeIndicator');
+    const debugPanel = document.getElementById('debugPanel');
+    const badPointListPanel = document.getElementById('badPointListPanel');
+    const canvasContainer = document.getElementById('canvasContainer');
+    const fitButton = document.getElementById('fitButton');
+    const actualButton = document.getElementById('actualButton');
+    const zoomInButton = document.getElementById('zoomInButton');
+    const zoomOutButton = document.getElementById('zoomOutButton');
+
+    // 初始化
+    function init() {
+      // 默认使用输入框的值设置全局 width/height
+      width = parseInt(widthInput.value);
+      height = parseInt(heightInput.value);
+
+      resizeCanvas();
+      setupEventListeners();
+      bindResolutionButtons();
+      setupDragAndDrop();
+      setActiveViewButton(fitButton); // 初始激活拟合屏幕
+    }
+
+    // 设置事件监听器
+    function setupEventListeners() {
+    window.addEventListener('resize', resizeCanvas);
+
+      const viewButtons = [
+      document.getElementById('fitButton'),
+      document.getElementById('actualButton'),
+      document.getElementById('zoomInButton'),
+      document.getElementById('zoomOutButton')
+    ];
+    // 视图按钮激活状态切换函数
+    function setActiveViewButton(activeBtn) {
+      // 遍历所有视图按钮，移除激活类、恢复默认类
+      viewButtons.forEach(btn => {
+        if (btn) { // 防止元素不存在的报错
+          btn.classList.remove('btn-view-active'); // 移除激活样式
+          btn.classList.add('btn-secondary'); // 恢复默认样式
+        }
+      });
+      // 给当前点击的按钮添加激活类、移除默认类
+      if (activeBtn) {
+        activeBtn.classList.remove('btn-secondary');
+        activeBtn.classList.add('btn-view-active');
+      }
+    }
+
+
+      thresholdSlider.addEventListener('input', (e) => {
+        threshold = parseInt(e.target.value);
+        thresholdValue.textContent = threshold;
+      });
+
+      brightnessSlider.addEventListener('input', (e) => {
+        brightness = parseInt(e.target.value);
+        brightnessValue.textContent = brightness;
+        if (imageData) updateImage();
+      });
+
+      contrastSlider.addEventListener('input', (e) => {
+        contrast = parseInt(e.target.value);
+        contrastValue.textContent = `${contrast}%`;
+        if (imageData) updateImage();
+      });
+
+      gammaSlider.addEventListener('input', (e) => {
+        gamma = parseFloat(e.target.value);
+        gammaValue.textContent = gamma.toFixed(1);
+        if (imageData) updateImage();
+      });
+
+      minRangeInput.addEventListener('change', (e) => {
+        displayMin = parseInt(e.target.value);
+        if (imageData) updateImage();
+      });
+
+      maxRangeInput.addEventListener('change', (e) => {
+        displayMax = parseInt(e.target.value);
+        if (imageData) updateImage();
+      });
+
+      resetEnhanceButton.addEventListener('click', resetEnhanceParams);
+      autoAdjustButton.addEventListener('click', autoAdjustImage);
+
+      rowMajorOrderCheckbox.addEventListener('change', (e) => {
+        rowMajorOrder = e.target.checked;
+        if (originalData) reloadImageData();
+      });
+
+      littleEndianCheckbox.addEventListener('change', (e) => {
+        littleEndian = e.target.checked;
+        if (originalData) reloadImageData();
+      });
+
+      // 输入框手动改变时更新全局变量（如果已有图像则重新加载）
+      widthInput.addEventListener('change', () => {
+        const newW = parseInt(widthInput.value);
+        if (newW > 0 && newW <= 4096) {
+          width = newW;
+          syncResButtonActive();
+          if (originalData) reloadImageData();
+        }
+      });
+
+      heightInput.addEventListener('change', () => {
+        const newH = parseInt(heightInput.value);
+        if (newH > 0 && newH <= 4096) {
+          height = newH;
+          syncResButtonActive();
+          if (originalData) reloadImageData();
+        }
+      });
+
+      fileInput.addEventListener('change', handleFileSelect);
+      detectButton.addEventListener('click', detectBadPoints);
+      startMarkingButton.addEventListener('click', toggleMarkingMode);
+      clearManualButton.addEventListener('click', clearManualMarkings);
+      saveButton.addEventListener('click', saveResults);
+
+      fitButton.addEventListener('click', () => {
+        resetView(); // 原有功能保留
+        setActiveViewButton(fitButton); // 新增：激活当前按钮
+      });
+      actualButton.addEventListener('click', () => {
+        scale = 1;
+        offsetX = (canvas.width - width * scale) / 2;
+        offsetY = (canvas.height - height * scale) / 2;
+        drawCanvas(); // 原有功能保留
+        setActiveViewButton(actualButton); // 新增：激活当前按钮
+      });
+      // 放大 - 绑定激活逻辑
+      zoomInButton.addEventListener('click', () => {
+        zoomView(1.5); // 原有功能保留
+        setActiveViewButton(zoomInButton); // 新增：激活当前按钮
+      });
+
+      // 缩小 - 绑定激活逻辑
+      zoomOutButton.addEventListener('click', () => {
+        zoomView(1 / 1.5); // 原有功能保留
+        setActiveViewButton(zoomOutButton); // 新增：激活当前按钮
+      });
+
+      setupCanvasEvents();
+    }
+
+    // 拖拽加载支持
+    function setupDragAndDrop() {
+      canvasContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        canvasContainer.classList.add('drop-hover');
+      });
+      canvasContainer.addEventListener('dragleave', () => {
+        canvasContainer.classList.remove('drop-hover');
+      });
+      canvasContainer.addEventListener('drop', (e) => {
+        e.preventDefault();
+        canvasContainer.classList.remove('drop-hover');
+        const file = e.dataTransfer.files[0];
+        if (file && /\.(raw|bin|dat)$/i.test(file.name)) {
+          const dt = new DataTransfer();
+          dt.items.add(file);
+          fileInput.files = dt.files;
+          handleFileSelect({ target: { files: dt.files } });
+        }
+      });
+    }
+
+    // 视图缩放（保持中心）
+    function zoomView(factor) {
+      const prevScale = scale;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const imgX = (centerX - offsetX) / prevScale;
+      const imgY = (centerY - offsetY) / prevScale;
+
+      scale *= factor;
+      scale = Math.max(0.1, Math.min(20, scale));
+
+      offsetX = centerX - imgX * scale;
+      offsetY = centerY - imgY * scale;
+      drawCanvas();
+    }
+
+    // 点击坏点跳转并放大
+    function centerOnPoint(x, y) {
+      scale = 8;
+      offsetX = canvas.width / 2 - (x + 0.5) * scale;
+      offsetY = canvas.height / 2 - (y + 0.5) * scale;
+      drawCanvas();
+    }
+
+    // ✅ 修复BUG1：分辨率按钮绑定事件【核心修复】- 增强选中逻辑+强制生效
+    function bindResolutionButtons() {
+      const resBtns = document.querySelectorAll('.res-btn');
+      resBtns.forEach(btn => {
+        btn.onclick = function() {
+          const newW = parseInt(this.dataset.width);
+          const newH = parseInt(this.dataset.height);
+          // 强制赋值输入框+全局变量
+          widthInput.value = newW;
+          heightInput.value = newH;
+          width = newW;
+          height = newH;
+          // 清空所有按钮的选中状态，只高亮当前点击的
+          resBtns.forEach(b => b.classList.remove('active'));
+          this.classList.add('active');
+          // 有图像则重新加载
+          if (originalData) reloadImageData();
+        }
+      });
+    }
+    // ✅ 新增：输入框修改分辨率后，同步按钮选中状态
+    function syncResButtonActive(){
+        const resBtns = document.querySelectorAll('.res-btn');
+        resBtns.forEach(btn => {
+            const btnW = parseInt(btn.dataset.width);
+            const btnH = parseInt(btn.dataset.height);
+            if(btnW === width && btnH === height){
+                resBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+            }
+        });
+    }
+
+    function resizeCanvas() {
+      const container = canvas.parentElement;
+      canvas.width = container.clientWidth;
+      canvas.height = container.clientHeight;
+      if (imageBitmap) drawCanvas();
+    }
+
+    function setupCanvasEvents() {
+      canvas.addEventListener('mousedown', handleMouseDown);
+      canvas.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      canvas.addEventListener('wheel', handleMouseWheel);
+      window.addEventListener('keydown', handleKeyDown);
+    }
+
+    function resetEnhanceParams() {
+      brightness = 0; contrast = 100; gamma = 1.0; displayMin = 0; displayMax = 65535;
+      brightnessSlider.value = brightness; brightnessValue.textContent = brightness;
+      contrastSlider.value = contrast; contrastValue.textContent = `${contrast}%`;
+      gammaSlider.value = gamma; gammaValue.textContent = gamma.toFixed(1);
+      minRangeInput.value = displayMin; maxRangeInput.value = displayMax;
+      if (imageData) updateImage();
+    }
+
+    function autoAdjustImage() {
+      if (!imageData) return;
+      displayMin = imageStats.p1;
+      displayMax = imageStats.p99;
+      minRangeInput.value = displayMin;
+      maxRangeInput.value = displayMax;
+      updateImage();
+    }
+
+    function reloadImageData() {
+      if (!originalData) return;
+      showLoading();
+      try {
+        const totalPixels = width * height;
+        imageData = convertEndianness(originalData, totalPixels);
+        calculateImageStats();
+        updateImage();
+        resetView();
+        hideLoading();
+      } catch (error) {
+        console.error('重新加载图像失败:', error);
+        hideLoading();
+      }
+    }
+
+    function convertEndianness(byteData, totalPixels) {
+      const result = new Uint16Array(totalPixels);
+      const byteView = new Uint8Array(byteData);
+      const needBytes = totalPixels * 2;
+      if (byteView.length < needBytes) {
+        throw new Error(`数据不足：需要 ${needBytes} 字节，但只提供了 ${byteView.length} 字节`);
+      }
+      for (let i = 0; i < totalPixels; i++) {
+        const byteOffset = i * 2;
+        if (littleEndian) {
+          result[i] = (byteView[byteOffset + 1] << 8) | byteView[byteOffset];
+        } else {
+          result[i] = (byteView[byteOffset] << 8) | byteView[byteOffset + 1];
+        }
+      }
+      return result;
+    }
+
+    async function handleFileSelect(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      showLoading();
+
+      // 直接使用当前输入的分辨率
+      width = parseInt(widthInput.value);
+      height = parseInt(heightInput.value);
+
+      try {
+        const arrayBuffer = await readFileAsync(file);
+        originalData = arrayBuffer;
+        const totalPixels = width * height;
+        imageData = convertEndianness(originalData, totalPixels);
+        calculateImageStats();
+        autoAdjustImage();
+        autoBadPoints.clear();
+        manualBadPoints.clear();
+        updateBadCount();
+        updateBadPointList();
+        updateImage();
+        resetView();
+
+        detectButton.disabled = false;
+        startMarkingButton.disabled = false;
+        saveButton.disabled = false;
+        clearManualButton.disabled = false;
+        autoAdjustButton.disabled = false;
+        noImageHint.classList.add('hidden');
+        viewModeIndicator.classList.remove('hidden');
+      } catch (error) {
+        console.error('加载文件失败:', error);
+        alert('加载文件失败: ' + error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function calculateImageStats() {
+      if (!imageData) return;
+      const sortedValues = new Uint16Array(imageData);
+      sortedValues.sort();
+      const minValue = sortedValues[0];
+      const maxValue = sortedValues[sortedValues.length - 1];
+      const p1 = sortedValues[Math.floor(sortedValues.length * 0.01)];
+      const p99 = sortedValues[Math.floor(sortedValues.length * 0.99)];
+
+      imageStats = { min: minValue, max: maxValue, p1: p1, p99: p99 };
+      debugPanel.innerHTML = `
+        <p class="font-medium mb-1">图像统计 (${width}×${height}):</p>
+        <p>最小值: ${minValue}, 最大值: ${maxValue}</p>
+        <p>1%分位: ${p1}, 99%分位: ${p99}</p>
+        <p class="text-xs text-gray-400">提示：若最大值<100，可能字节序/存储顺序错误</p>
+      `;
+    }
+
+    async function updateImage() {
+      if (!imageData) return;
+      showLoading();
+      try {
+        await createImageBitmapFromData();
+        drawCanvas();
+        hideLoading();
+      } catch (error) {
+        console.error('更新图像失败:', error);
+        hideLoading();
+      }
+    }
+
+    async function createImageBitmapFromData() {
+      const rgbaData = new Uint8ClampedArray(width * height * 4);
+      const contrastFactor = contrast / 100;
+      const brightnessOffset = brightness * 2.55;
+      const range = Math.max(1, displayMax - displayMin);
+
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+          let value = imageData[index];
+          value = Math.max(displayMin, Math.min(displayMax, value));
+          let normalized = (value - displayMin) / range;
+          normalized = Math.pow(normalized, 1 / gamma);
+          normalized = 0.5 + contrastFactor * (normalized - 0.5);
+          normalized += brightnessOffset / 255;
+          normalized = Math.max(0, Math.min(1, normalized));
+          const byteValue = Math.floor(normalized * 255);
+          const rgbaIndex = (y * width + x) * 4;
+          rgbaData[rgbaIndex] = byteValue;
+          rgbaData[rgbaIndex + 1] = byteValue;
+          rgbaData[rgbaIndex + 2] = byteValue;
+          rgbaData[rgbaIndex + 3] = 255;
+        }
+      }
+
+      const imageDataObj = new ImageData(rgbaData, width, height);
+      imageBitmap = await createImageBitmap(imageDataObj);
+    }
+
+    function drawCanvas() {
+      if (!imageBitmap) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+      ctx.scale(scale, scale);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(imageBitmap, 0, 0);
+
+      ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+      autoBadPoints.forEach(point => {
+        const [y, x] = point.split(',').map(Number);
+        ctx.beginPath();
+        ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      ctx.fillStyle = 'rgba(0, 204, 255, 1)';
+      manualBadPoints.forEach(point => {
+        const [y, x] = point.split(',').map(Number);
+        ctx.beginPath();
+        ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
+        ctx.fill();
+      });
+
+      if (isMarkingMode) {
+        ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
+        ctx.lineWidth = 1 / scale;
+        ctx.beginPath();
+        ctx.moveTo(currentX - 3 / scale + 0.5, currentY + 0.5);
+        ctx.lineTo(currentX + 3 / scale + 0.5, currentY + 0.5);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(currentX + 0.5, currentY - 3 / scale + 0.5);
+        ctx.lineTo(currentX + 0.5, currentY + 3 / scale + 0.5);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    async function detectBadPoints() {
+      if (!imageData) return;
+      showLoading();
+      detectButton.disabled = true;
+      try {
+        const neighborhoodSize = parseInt(neighborhoodSelect.value);
+        const halfNeighborhood = Math.floor(neighborhoodSize / 2);
+        const badPoints = new Set();
+
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const centerIndex = rowMajorOrder ? (y * width + x) : (x * height + y);
+            const centerValue = imageData[centerIndex];
+            let aboveThresholdCount = 0;
+            let validNeighbors = 0;
+
+            for (let ny = -halfNeighborhood; ny <= halfNeighborhood; ny++) {
+              for (let nx = -halfNeighborhood; nx <= halfNeighborhood; nx++) {
+                if (nx === 0 && ny === 0) continue;
+                const neighborX = x + nx;
+                const neighborY = y + ny;
+                if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height) {
+                  const neighborIndex = rowMajorOrder ? (neighborY * width + neighborX) : (neighborX * height + neighborY);
+                  const neighborValue = imageData[neighborIndex];
+                  if (Math.abs(centerValue - neighborValue) > threshold) {
+                    aboveThresholdCount++;
+                  }
+                  validNeighbors++;
+                }
+              }
+            }
+
+            if (validNeighbors > 0 && aboveThresholdCount > validNeighbors / 2) {
+              badPoints.add(`${y},${x}`);
+            }
+          }
+        }
+
+        autoBadPoints = badPoints;
+        updateBadCount();
+        updateBadPointList();
+        drawCanvas();
+      } catch (error) {
+        console.error('检测坏点失败:', error);
+        alert('检测坏点失败: ' + error.message);
+      } finally {
+        detectButton.disabled = false;
+        hideLoading();
+      }
+    }
+
+  function toggleMarkingMode() {
+    if (!imageData) return;
+    if (isMarkingMode) {
+      // 退出标记模式：恢复按钮默认样式（灰白边框）
+      isMarkingMode = false;
+      startMarkingButton.innerHTML = '<i class="fa fa-mouse-pointer"></i> 开始手动标记';
+      startMarkingButton.className = 'btn-secondary w-full'; // 恢复默认的按钮样式类
+      currentXEl.textContent = '-';
+      currentYEl.textContent = '-';
+      currentValueEl.textContent = '-';
+      document.body.style.cursor = '';
+      viewModeIndicator.classList.remove('hidden');
+      markModeIndicator.classList.add('hidden');
+    } else {
+      // 进入标记模式：改成【蓝色背景+白色文字】你要的效果 ✅核心修改
+      isMarkingMode = true;
+      startMarkingButton.innerHTML = '<i class="fa fa-stop"></i> 退出手动标记';
+      startMarkingButton.className = 'btn-primary w-full'; // 直接用你定义好的蓝色主按钮样式
+      currentX = Math.floor(width / 2);
+      currentY = Math.floor(height / 2);
+      updateCurrentPositionInfo();
+      document.body.style.cursor = 'crosshair';
+      viewModeIndicator.classList.add('hidden');
+      markModeIndicator.classList.remove('hidden');
+    }
+    drawCanvas();
+  }
+
+    function clearManualMarkings() {
+      if (confirm('确定要清除所有手动标记的坏点吗？')) {
+        manualBadPoints.clear();
+        updateBadCount();
+        updateBadPointList();
+        drawCanvas();
+      }
+    }
+
+    function saveResults() {
+      if (!imageData) return;
+      showLoading();
+      try {
+        const totalPixels = width * height;
+        const totalBytes = totalPixels * 2;
+        const badFlagData = new Uint16Array(totalPixels);
+        const allBadPoints = new Set([...autoBadPoints, ...manualBadPoints]);
+
+        allBadPoints.forEach(point => {
+          const [y, x] = point.split(',').map(Number);
+          const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+          badFlagData[index] = 0x1000;
+        });
+
+        const byteData = new Uint8Array(totalBytes);
+        for (let i = 0; i < totalPixels; i++) {
+          const byteOffset = i * 2;
+          const value = badFlagData[i];
+          if (littleEndian) {
+            byteData[byteOffset] = value & 0xFF;
+            byteData[byteOffset + 1] = (value >> 8) & 0xFF;
+          } else {
+            byteData[byteOffset] = (value >> 8) & 0xFF;
+            byteData[byteOffset + 1] = value & 0xFF;
+          }
+        }
+
+        const blob = new Blob([byteData.buffer], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        let downloadName = 'bad_points.bin';
+        if (fileInput.files[0]) {
+          downloadName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + "_bad.bin";
+        }
+        a.href = url;
+        a.download = downloadName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('保存文件失败:', error);
+        alert('保存文件失败: ' + error.message);
+      } finally {
+        hideLoading();
+      }
+    }
+
+    function handleMouseDown(e) {
+      if (!imageData) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const imgX = Math.floor((mouseX - offsetX) / scale);
+      const imgY = Math.floor((mouseY - offsetY) / scale);
+
+      if (isMarkingMode) {
+        if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+          currentX = imgX;
+          currentY = imgY;
+          updateCurrentPositionInfo();
+          drawCanvas();
+        }
+      } else {
+        isDragging = true;
+        lastX = mouseX;
+        lastY = mouseY;
+        canvas.style.cursor = 'grabbing';
+      }
+    }
+
+    function handleMouseMove(e) {
+      if (!imageData) return;
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+
+      if (isDragging) {
+        const dx = mouseX - lastX;
+        const dy = mouseY - lastY;
+        offsetX += dx;
+        offsetY += dy;
+        lastX = mouseX;
+        lastY = mouseY;
+        drawCanvas();
+        return;
+      }
+
+      const x = Math.floor((mouseX - offsetX) / scale);
+      const y = Math.floor((mouseY - offsetY) / scale);
+      if (x >= 0 && x < width && y >= 0 && y < height) {
+        const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+        const value = imageData[index];
+        currentXEl.textContent = x;
+        currentYEl.textContent = y;
+        currentValueEl.textContent = value;
+      } else {
+        currentXEl.textContent = '-';
+        currentYEl.textContent = '-';
+        currentValueEl.textContent = '-';
+      }
+    }
+
+    function handleMouseUp() {
+      if (isDragging) {
+        isDragging = false;
+        canvas.style.cursor = 'grab';
+      }
+    }
+
+    function handleMouseWheel(e) {
+      if (!imageData) return;
+      e.preventDefault();
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
+      const imgX = (mouseX - offsetX) / scale;
+      const imgY = (mouseY - offsetY) / scale;
+
+      const zoomIntensity = 0.1;
+      if (e.deltaY < 0) {
+        scale *= (1 + zoomIntensity);
+      } else {
+        scale /= (1 + zoomIntensity);
+      }
+      scale = Math.min(Math.max(0.1, scale), 20);
+
+      offsetX = mouseX - imgX * scale;
+      offsetY = mouseY - imgY * scale;
+      drawCanvas();
+    }
+
+    // ✅ 修复BUG2：方向键滚动网页【核心修复】- 所有标记模式按键添加 e.preventDefault() 阻止默认行为
+    function handleKeyDown(e) {
+      if (!isMarkingMode || !imageData) return;
+      let moved = false;
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault(); // 阻止页面上滚
+          if (currentY > 0) { currentY--; moved = true; }
+          break;
+        case 'ArrowDown':
+          e.preventDefault(); // 阻止页面下滚
+          if (currentY < height - 1) { currentY++; moved = true; }
+          break;
+        case 'ArrowLeft':
+          e.preventDefault(); // 阻止页面左滚
+          if (currentX > 0) { currentX--; moved = true; }
+          break;
+        case 'ArrowRight':
+          e.preventDefault(); // 阻止页面右滚
+          if (currentX < width - 1) { currentX++; moved = true; }
+          break;
+        case ' ':
+          e.preventDefault(); // 阻止空格翻页
+          const point = `${currentY},${currentX}`;
+          if (manualBadPoints.has(point)) {
+            manualBadPoints.delete(point);
+          } else {
+            manualBadPoints.add(point);
+          }
+          updateBadCount();
+          updateBadPointList();
+          drawCanvas();
+          break;
+        case 'Enter':
+          e.preventDefault(); // 阻止回车默认行为
+          toggleMarkingMode();
+          break;
+      }
+      if (moved) {
+        updateCurrentPositionInfo();
+        drawCanvas();
+      }
+    }
+
+    function resetView() {
+      const scaleX = canvas.width / width;
+      const scaleY = canvas.height / height;
+      scale = Math.min(scaleX, scaleY);
+      offsetX = (canvas.width - width * scale) / 2;
+      offsetY = (canvas.height - height * scale) / 2;
+      drawCanvas();
+    }
+
+    function updateBadCount() {
+      const autoCount = autoBadPoints.size;
+      const manualCount = manualBadPoints.size;
+      const totalCount = autoCount + manualCount;
+      const totalPixels = width * height;
+      const percentage = totalPixels > 0 ? (totalCount / totalPixels * 100).toFixed(6) : '0.0000';
+
+      autoBadCount.textContent = autoCount;
+      manualBadCount.textContent = manualCount;
+      totalBadCount.textContent = totalCount;
+      badPercentage.textContent = percentage;
+    }
+
+    function updateBadPointList() {
+      const autoList = Array.from(autoBadPoints)
+        .sort((a, b) => {
+          const [ya, xa] = a.split(',').map(Number);
+          const [yb, xb] = b.split(',').map(Number);
+          return ya - yb || xa - xb;
+        })
+        .map(point => {
+          const [y, x] = point.split(',').map(Number);
+          return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-red-400">(${x}, ${y})</span> <span class="text-red-300 text-xs">自动</span></div>`;
+        });
+
+      const manualList = Array.from(manualBadPoints)
+        .sort((a, b) => {
+          const [ya, xa] = a.split(',').map(Number);
+          const [yb, xb] = b.split(',').map(Number);
+          return ya - yb || xa - xb;
+        })
+        .map(point => {
+          const [y, x] = point.split(',').map(Number);
+          return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-blue-400">(${x}, ${y})</span> <span class="text-blue-300 text-xs">手动</span></div>`;
+        });
+
+      const allPoints = [...autoList, ...manualList];
+
+      if (allPoints.length === 0) {
+        badPointListPanel.innerHTML = `
+          <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
+          <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
+        `;
+      } else {
+        badPointListPanel.innerHTML = `
+          <p class="font-medium mb-1 text-green-400">📌 坏点列表（共 ${allPoints.length} 个，点击坐标可跳转）：</p>
+          <div class="flex flex-col gap-1 mt-1">${allPoints.join('')}</div>
+        `;
+      }
+    }
+
+    function updateCurrentPositionInfo() {
+      if (!imageData) return;
+      currentXEl.textContent = currentX;
+      currentYEl.textContent = currentY;
+      const index = rowMajorOrder ? (currentY * width + currentX) : (currentX * height + currentY);
+      currentValueEl.textContent = imageData[index];
+    }
+
+    function showLoading() {
+      loadingIndicator.classList.remove('hidden');
+    }
+
+    function hideLoading() {
+      loadingIndicator.classList.add('hidden');
+    }
+
+    function readFileAsync(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error);
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
