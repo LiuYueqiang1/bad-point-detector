@@ -44,6 +44,9 @@
             .btn-short {
                 @apply bg-gray-50 border border-gray-300 hover:bg-gray-200 px-2 py-1 rounded text-sm transition-all;
             }
+            .btn-short-active {
+                @apply bg-primary text-white border-primary hover:bg-primary/90 !important;
+            }
             .status-bar {
                 @apply bg-light p-2 rounded text-sm border border-gray-200;
             }
@@ -66,7 +69,7 @@
                 <i class="fa fa-file-image-o text-primary"></i>
                 原始Y8图像读取工具 (精准像素查看)
             </h1>
-            <p class="text-gray-500 mt-1">8bit灰度原始显示 · 像素级精准查看 · 640×512/384×288双分辨率兼容</p>
+            <p class="text-gray-500 mt-1">8bit灰度原始显示 · 像素级精准查看 · 1280×1024/640×512/384×288三分辨率兼容</p>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -90,14 +93,11 @@
                                     <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512">
                                 </div>
                             </div>
-                            <!-- 新增：双分辨率快捷按钮 -->
                             <div class="flex gap-2 mt-2">
-                                <button id="size640512" class="btn-short w-1/2">640×512</button>
-                                <button id="size384288" class="btn-short w-1/2">384×288</button>
+                                <button id="size640512" class="btn-short flex-1 btn-short-active">640×512</button>
+                                <button id="size384288" class="btn-short flex-1">384×288</button>
+                                <button id="size12801024" class="btn-short flex-1">1280×1024</button>
                             </div>
-                            <button id="applySizeButton" class="btn-secondary w-full mt-2 text-xs py-1">
-                                应用尺寸
-                            </button>
                             <div class="space-y-2 mt-3">
                                 <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
                                     <input type="checkbox" id="rowMajorOrder" checked>
@@ -184,7 +184,6 @@
         const fileInfo = document.getElementById('fileInfo');
         const widthInput = document.getElementById('widthInput');
         const heightInput = document.getElementById('heightInput');
-        const applySizeButton = document.getElementById('applySizeButton');
         const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
         const noImageHint = document.getElementById('noImageHint');
         const loadingIndicator = document.getElementById('loadingIndicator');
@@ -197,6 +196,7 @@
         const pixelSelectHint = document.getElementById('pixelSelectHint');
         const size640512 = document.getElementById('size640512');
         const size384288 = document.getElementById('size384288');
+        const size12801024 = document.getElementById('size12801024');
 
         // 初始化
         function init() {
@@ -212,36 +212,29 @@
                 rowMajorOrder = e.target.checked;
                 if (originalData) reloadImageData();
             });
-            applySizeButton.addEventListener('click', applyCustomSize);
-            // 新增：双分辨率快捷按钮事件
-            size640512.addEventListener('click', () => { setImageSize(640, 512) });
-            size384288.addEventListener('click', () => { setImageSize(384, 288) });
+            size640512.addEventListener('click', () => { setImageSize(640, 512, size640512) });
+            size384288.addEventListener('click', () => { setImageSize(384, 288, size384288) });
+            size12801024.addEventListener('click', () => { setImageSize(1280, 1024, size12801024) });
 
             fileInput.addEventListener('change', handleFileSelect);
             setupCanvasEvents();
             window.addEventListener('keydown', handleKeyDown);
         }
 
-        // 新增：快速设置分辨率
-        function setImageSize(w, h) {
+        // ✅ 核心修复：高亮样式+初始化+点击切换 完美生效
+        function setImageSize(w, h, activeBtn) {
             widthInput.value = w;
             heightInput.value = h;
             width = w;
             height = h;
+            // 重置所有按钮为默认样式
+            [size640512, size384288, size12801024].forEach(btn => {
+                btn.className = 'btn-short flex-1';
+            });
+            // 给选中的按钮添加【强制高亮样式】
+            activeBtn.className = 'btn-short flex-1 btn-short-active';
+            // 立即重新加载图像，无需点击应用
             if (originalData) reloadImageData();
-        }
-
-        // 应用自定义尺寸
-        function applyCustomSize() {
-            const newWidth = parseInt(widthInput.value);
-            const newHeight = parseInt(heightInput.value);
-            if (newWidth > 0 && newHeight > 0) {
-                width = newWidth;
-                height = newHeight;
-                if (originalData) reloadImageData();
-            } else {
-                alert('请输入有效的宽度和高度');
-            }
         }
 
         function resizeCanvas() {
@@ -251,7 +244,6 @@
             if (imageBitmap) drawCanvas();
         }
 
-        // 画布交互事件（核心修改：拖动和选中/导航完全共存）
         function setupCanvasEvents() {
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
@@ -266,11 +258,8 @@
             });
         }
 
-        // 核心修改：键盘事件处理 空格开启/ESC退出
         function handleKeyDown(e) {
             if (!imageData) return;
-
-            // 空格：选中像素后，开启键盘导航模式
             if(e.key === ' ' && isPixelSelected && !keyboardNavMode) {
                 e.preventDefault();
                 keyboardNavMode = true;
@@ -279,8 +268,6 @@
                 drawCanvas();
                 return;
             }
-
-            // ESC：退出键盘导航模式，保留像素选中状态
             if(e.key === 'Escape' && keyboardNavMode) {
                 e.preventDefault();
                 keyboardNavMode = false;
@@ -289,8 +276,6 @@
                 drawCanvas();
                 return;
             }
-
-            // 键盘导航模式：方向键逐像素移动，边界限制
             if (keyboardNavMode && ['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) {
                 e.preventDefault();
                 switch (e.key) {
@@ -304,7 +289,6 @@
             }
         }
 
-        // 更新选中像素信息显示
         function updateSelectedPixelInfo() {
             if (selectedX < 0 || selectedY < 0 || !imageData) return;
             const index = rowMajorOrder ? (selectedY * width + selectedX) : (selectedX * height + selectedY);
@@ -314,16 +298,13 @@
             currentValueEl.textContent = grayValue;
         }
 
-        // 核心修复 ✅ 精准像素高亮框绘制：完美框住当前像素，无偏移
         function drawPixelHighlight() {
             if (selectedX < 0 || selectedY < 0 || !imageData) return;
             ctx.save();
             ctx.translate(offsetX, offsetY);
             ctx.scale(scale, scale);
             ctx.strokeStyle = keyboardNavMode ? '#FF7D00' : '#165DFF';
-            // ========== 就改下面这一行 ==========
-            ctx.lineWidth = 0.5 / scale; // 原来的值是 1;
-            // ========== 修改结束 ==========
+            ctx.lineWidth = 0.5 / scale;
             ctx.strokeRect(selectedX, selectedY, 1, 1);
             ctx.restore();
         }
@@ -423,7 +404,6 @@
             });
         }
 
-        // 画布绘制主方法
         function drawCanvas() {
             if (!imageBitmap) return;
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -433,11 +413,9 @@
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(imageBitmap, 0, 0);
             ctx.restore();
-            // 绘制精准高亮框
             drawPixelHighlight();
         }
 
-        // 核心修改 ✅ 鼠标事件：拖动和选中/导航完全共存，互不影响
         function handleMouseDown(e) {
             if (!imageData) return;
             const rect = canvas.getBoundingClientRect();
@@ -446,7 +424,6 @@
             const imgX = Math.floor((mouseX - offsetX) / scale);
             const imgY = Math.floor((mouseY - offsetY) / scale);
 
-            // 点击在图像范围内 → 选中像素
             if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
                 isPixelSelected = true;
                 selectedX = imgX;
@@ -454,15 +431,12 @@
                 pixelSelectHint.classList.remove('hidden');
                 updateSelectedPixelInfo();
                 drawCanvas();
-            }
-            // 点击在图像外 → 开启拖动
-            else {
+            } else {
                 isDragging = true;
                 lastX = mouseX;
                 lastY = mouseY;
                 canvas.style.cursor = 'grabbing';
             }
-            // 无论是否选中，鼠标左键都可以拖动，优先级最高
             if(e.button === 0) {
                 isDragging = true;
                 lastX = mouseX;
@@ -476,7 +450,6 @@
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // 拖动逻辑：始终生效，和导航模式无关 ✅
             if (isDragging) {
                 const dx = mouseX - lastX;
                 const dy = mouseY - lastY;
@@ -488,7 +461,6 @@
                 return;
             }
 
-            // 悬浮显示像素值：非选中/导航模式下生效
             if (!isPixelSelected && !keyboardNavMode) {
                 const x = Math.floor((mouseX - offsetX) / scale);
                 const y = Math.floor((mouseY - offsetY) / scale);
