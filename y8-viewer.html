@@ -221,19 +221,15 @@
             window.addEventListener('keydown', handleKeyDown);
         }
 
-        // ✅ 核心修复：高亮样式+初始化+点击切换 完美生效
         function setImageSize(w, h, activeBtn) {
             widthInput.value = w;
             heightInput.value = h;
             width = w;
             height = h;
-            // 重置所有按钮为默认样式
             [size640512, size384288, size12801024].forEach(btn => {
                 btn.className = 'btn-short flex-1';
             });
-            // 给选中的按钮添加【强制高亮样式】
             activeBtn.className = 'btn-short flex-1 btn-short-active';
-            // 立即重新加载图像，无需点击应用
             if (originalData) reloadImageData();
         }
 
@@ -416,8 +412,18 @@
             drawPixelHighlight();
         }
 
+        // ========== ✅ 核心BUG修复 开始 ==========
         function handleMouseDown(e) {
             if (!imageData) return;
+            // 关键判断：如果处于【键盘导航模式】，只执行拖动逻辑，不执行任何像素选中逻辑
+            if(keyboardNavMode) {
+                isDragging = true;
+                lastX = e.clientX - canvas.getBoundingClientRect().left;
+                lastY = e.clientY - canvas.getBoundingClientRect().top;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+            // 非导航模式，执行原有正常逻辑
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
@@ -443,6 +449,7 @@
                 lastY = mouseY;
             }
         }
+        // ========== ✅ 核心BUG修复 结束 ==========
 
         function handleMouseMove(e) {
             if (!imageData) return;
@@ -494,7 +501,7 @@
             const imgY = (mouseY - offsetY) / scale;
             const zoomIntensity = 0.1;
             scale = e.deltaY < 0 ? scale * (1 + zoomIntensity) : scale / (1 + zoomIntensity);
-            scale = Math.min(Math.max(0.1, scale), 10);
+scale = Math.min(Math.max(0.1, scale), 10);
             offsetX = mouseX - imgX * scale;
             offsetY = mouseY - imgY * scale;
             drawCanvas();
