@@ -412,24 +412,34 @@
             drawPixelHighlight();
         }
 
-        // ========== ✅ 核心BUG修复 开始 ==========
+        // ========== ✅ 核心最终修改 【完美匹配需求】 ==========
         function handleMouseDown(e) {
             if (!imageData) return;
-            // 关键判断：如果处于【键盘导航模式】，只执行拖动逻辑，不执行任何像素选中逻辑
-            if(keyboardNavMode) {
-                isDragging = true;
-                lastX = e.clientX - canvas.getBoundingClientRect().left;
-                lastY = e.clientY - canvas.getBoundingClientRect().top;
-                canvas.style.cursor = 'grabbing';
-                return;
-            }
-            // 非导航模式，执行原有正常逻辑
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
             const imgX = Math.floor((mouseX - offsetX) / scale);
             const imgY = Math.floor((mouseY - offsetY) / scale);
 
+            // 1. 如果在键盘导航模式中
+            if(keyboardNavMode) {
+                // ✅ 能选中新像素+更新信息+重绘高亮框
+                if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+                    isPixelSelected = true;
+                    selectedX = imgX;
+                    selectedY = imgY;
+                    updateSelectedPixelInfo();
+                    drawCanvas();
+                }
+                // ✅ 不显示「已选中像素」提示框 + 保留拖动功能
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // 2. 非导航模式，执行原有完整逻辑（含蓝色提示框）
             if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
                 isPixelSelected = true;
                 selectedX = imgX;
@@ -449,7 +459,6 @@
                 lastY = mouseY;
             }
         }
-        // ========== ✅ 核心BUG修复 结束 ==========
 
         function handleMouseMove(e) {
             if (!imageData) return;
@@ -501,7 +510,7 @@
             const imgY = (mouseY - offsetY) / scale;
             const zoomIntensity = 0.1;
             scale = e.deltaY < 0 ? scale * (1 + zoomIntensity) : scale / (1 + zoomIntensity);
-scale = Math.min(Math.max(0.1, scale), 10);
+            scale = Math.min(Math.max(0.1, scale), 10);
             offsetX = mouseX - imgX * scale;
             offsetY = mouseY - imgY * scale;
             drawCanvas();
