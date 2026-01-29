@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>原始Y8图像读取工具 (精准像素查看)</title>
+    <title>原始Y8图像读取工具 (精准像素查看+坏点标记)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
@@ -41,6 +41,9 @@
             .btn-secondary {
                 @apply bg-white border border-gray-300 hover:bg-gray-100 px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
             }
+            .btn-accent {
+                @apply bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+            }
             .btn-short {
                 @apply bg-gray-50 border border-gray-300 hover:bg-gray-200 px-2 py-1 rounded text-sm transition-all;
             }
@@ -53,11 +56,20 @@
             .debug-panel {
                 @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-40;
             }
+            .bad-point-panel {
+                @apply bg-dark text-white p-3 rounded-lg text-sm font-mono overflow-auto max-h-60;
+            }
             .nav-hint {
                 @apply bg-accent/90 text-white px-3 py-1 rounded text-sm absolute top-2 right-2;
             }
             .select-hint {
                 @apply bg-blue-600/90 text-white px-3 py-1 rounded text-sm absolute top-2 right-24;
+            }
+            .mark-mode-hint {
+                @apply bg-red-500/90 text-white px-3 py-1 rounded text-sm absolute top-2 left-2;
+            }
+            .view-mode-hint {
+                @apply bg-black/70 text-white px-3 py-1 rounded text-sm absolute top-2 left-2;
             }
         }
     </style>
@@ -67,13 +79,14 @@
         <header class="mb-6">
             <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center gap-3">
                 <i class="fa fa-file-image-o text-primary"></i>
-                原始Y8图像读取工具 (精准像素查看)
+                原始Y8图像读取工具 (精准像素查看+坏点标记)
             </h1>
-            <p class="text-gray-500 mt-1">8bit灰度原始显示 · 像素级精准查看 · 1280×1024/640×512/384×288三分辨率兼容</p>
+            <p class="text-gray-500 mt-1">8bit灰度原始显示 · 像素级精准查看 · 坏点自动检测/手动标记 · 16bit掩码保存</p>
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div class="lg:col-span-1 space-y-4">
+                <!-- 文件操作面板 -->
                 <div class="control-panel">
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">文件操作</h2>
                     <div class="space-y-3">
@@ -86,11 +99,11 @@
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div>
                                     <label class="block text-xs text-gray-500">宽度</label>
-                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640">
+                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640" min="1">
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500">高度</label>
-                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512">
+                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512" min="1">
                                 </div>
                             </div>
                             <div class="flex gap-2 mt-2">
@@ -103,12 +116,58 @@
                                     <input type="checkbox" id="rowMajorOrder" checked>
                                     <label for="rowMajorOrder" class="text-sm">行优先存储</label>
                                 </div>
+                                <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
+                                    <input type="checkbox" id="littleEndian">
+                                    <label for="littleEndian" class="text-sm">小端字节序</label>
+                                    <span class="text-[10px] text-gray-400">(默认大端)</span>
+                                </div>
                                 <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200 text-gray-400">
                                     <i class="fa fa-info-circle"></i>
                                     <label class="text-sm">Y8格式：单字节无大小端，0=黑/255=白</label>
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- 手动标记面板 -->
+                <div class="control-panel">
+                    <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">手动标记</h2>
+                    <div class="space-y-3">
+                        <button id="startMarkingButton" class="btn-secondary w-full" disabled>
+                            <i class="fa fa-mouse-pointer"></i> 开始手动标记
+                        </button>
+                        <button id="clearManualButton" class="btn-secondary w-full" disabled>
+                            <i class="fa fa-eraser"></i> 清除手动标记
+                        </button>
+                        <button id="saveBadMaskButton" class="btn-accent w-full" disabled>
+                            <i class="fa fa-save"></i> 保存16bit坏点掩码
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 坏点检测参数面板 -->
+                <div class="control-panel">
+                    <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">检测参数</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">差异阈值</label>
+                            <div class="flex items-center gap-2">
+                                <input type="range" id="thresholdSlider" min="10" max="200" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="thresholdValue" class="text-sm font-medium min-w-[40px] text-center">50</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">邻域大小</label>
+                            <select id="neighborhoodSelect" class="w-full text-sm border rounded px-2 py-1">
+                                <option value="3">3×3</option>
+                                <option value="5" selected>5×5</option>
+                                <option value="7">7×7</option>
+                            </select>
+                        </div>
+                        <button id="detectButton" class="btn-primary w-full" disabled>
+                            <i class="fa fa-magic"></i> 自动检测坏点
+                        </button>
                     </div>
                 </div>
             </div>
@@ -126,8 +185,12 @@
                         <i class="fa fa-picture-o text-5xl mb-3"></i>
                         <p>请加载Y8格式原始图像文件</p>
                     </div>
-                    <div class="absolute top-2 left-2 bg-black/70 text-white px-3 py-1 rounded text-sm" id="viewModeIndicator">
-                        原始模式：滚轮缩放+左键拖动 | 点击像素选中 → 空格开启键盘导航 | ESC退出
+                    <!-- 模式提示：互斥显示 -->
+                    <div class="view-mode-hint hidden" id="viewModeIndicator">
+                        查看模式：滚轮缩放+左键拖动 | 点击像素选中 → 空格开启键盘导航 | ESC退出
+                    </div>
+                    <div class="mark-mode-hint hidden" id="markModeIndicator">
+                        标记模式：方向键移动 | 空格标记/取消 | 回车退出 | 拖拽平移/滚轮缩放
                     </div>
                     <div class="nav-hint hidden" id="keyboardNavHint">
                         <i class="fa fa-keyboard-o"></i> 键盘导航中：↑↓←→移动像素 | ESC退出
@@ -137,29 +200,43 @@
                     </div>
                 </div>
 
-                <div class="status-bar">
-                    <p><span class="font-medium">当前像素信息:</span> X: <span id="currentX">-</span>, Y: <span id="currentY">-</span>, 原始灰度值: <span id="currentValue">-</span> (0~255)</p>
+                <!-- 双状态栏：像素信息 + 坏点统计 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="status-bar">
+                        <p><span class="font-medium">当前像素信息:</span> X: <span id="currentX">-</span>, Y: <span id="currentY">-</span>, 原始灰度值: <span id="currentValue">-</span> (0~255)</p>
+                    </div>
+                    <div class="status-bar">
+                        <p><span class="font-medium">坏点统计:</span> 自动 <span id="autoBadCount" class="text-red-500">0</span> 个，手动 <span id="manualBadCount" class="text-blue-500">0</span> 个，总计 <span id="totalBadCount" class="text-accent">0</span> 个 <span class="text-gray-500">( <span id="badPercentage">0.0000</span>% )</span></p>
+                    </div>
                 </div>
 
+                <!-- 图像统计面板 -->
                 <div class="debug-panel" id="debugPanel">
                     <p class="font-medium mb-1">图像统计 (等待加载):</p>
                     <p>分辨率: - × - | 最小灰度: -, 最大灰度: -, 1%分位: -, 99%分位: -</p>
+                </div>
+
+                <!-- 坏点列表面板：点击坐标跳转放大 -->
+                <div class="bad-point-panel" id="badPointListPanel">
+                    <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
+                    <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
                 </div>
             </div>
         </div>
 
         <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
-            <p>原始Y8图像读取工具 &copy; 2026 | 精准像素查看优化版</p>
+            <p>原始Y8图像读取工具 &copy; 2026 | 精准像素查看+坏点标记版 | 16bit掩码保存</p>
         </footer>
     </div>
 
     <script>
-        // 全局变量 - 纯原始Y8读取，无任何调光参数
-        let imageData = null;          // 原始图像数据（8位 Uint8Array）
-        let originalData = null;       // 原始字节数据
+        // 【原有Y8工具全局变量】
+        let imageData = null;          // Y8原始8位灰度数据（Uint8Array）
+        let originalData = null;       // 文件原始ArrayBuffer
         let width = 640;               // 默认分辨率 640*512
         let height = 512;              // 默认分辨率
         let rowMajorOrder = true;      // 是否行优先存储
+        let littleEndian = false;      // 新增：字节序（为了匹配16bit保存规则）
         let imageStats = { min: 0, max: 0, p1: 0, p99: 0 }; // 图像统计信息
 
         // 画布相关变量
@@ -172,19 +249,27 @@
         let lastX, lastY;              // 上一次鼠标位置
         let imageBitmap = null;        // 用于绘制的原始图像
 
-        // 核心修改：新增选中状态、分离选中/导航模式
+        // 原有像素选中/导航变量
         let isPixelSelected = false;   // 是否点击选中了像素
         let keyboardNavMode = false;   // 是否开启键盘导航模式
         let selectedX = -1;            // 选中的像素X坐标
         let selectedY = -1;            // 选中的像素Y坐标
 
-        // DOM元素
+        // 【新增：坏点标记核心变量】完全遵循原坏点检测工具规则
+        let autoBadPoints = new Set(); // 自动检测坏点 Set<"y,x">
+        let manualBadPoints = new Set();// 手动标记坏点 Set<"y,x">
+        let isMarkingMode = false;     // 是否处于坏点标记模式
+        let currentMarkX = 0;          // 标记模式十字准星X
+        let currentMarkY = 0;          // 标记模式十字准星Y
+        let threshold = 50;            // 坏点检测灰度差阈值
+
+        // 【DOM元素】原有元素 + 新增坏点相关元素
         const fileInput = document.getElementById('fileInput');
         const fileName = document.getElementById('fileName');
-        const fileInfo = document.getElementById('fileInfo');
         const widthInput = document.getElementById('widthInput');
         const heightInput = document.getElementById('heightInput');
         const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
+        const littleEndianCheckbox = document.getElementById('littleEndian');
         const noImageHint = document.getElementById('noImageHint');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const currentXEl = document.getElementById('currentX');
@@ -197,30 +282,63 @@
         const size640512 = document.getElementById('size640512');
         const size384288 = document.getElementById('size384288');
         const size12801024 = document.getElementById('size12801024');
+        // 新增坏点相关DOM
+        const markModeIndicator = document.getElementById('markModeIndicator');
+        const detectButton = document.getElementById('detectButton');
+        const startMarkingButton = document.getElementById('startMarkingButton');
+        const clearManualButton = document.getElementById('clearManualButton');
+        const saveBadMaskButton = document.getElementById('saveBadMaskButton');
+        const thresholdSlider = document.getElementById('thresholdSlider');
+        const thresholdValue = document.getElementById('thresholdValue');
+        const neighborhoodSelect = document.getElementById('neighborhoodSelect');
+        const autoBadCount = document.getElementById('autoBadCount');
+        const manualBadCount = document.getElementById('manualBadCount');
+        const totalBadCount = document.getElementById('totalBadCount');
+        const badPercentage = document.getElementById('badPercentage');
+        const badPointListPanel = document.getElementById('badPointListPanel');
 
         // 初始化
         function init() {
             resizeCanvas();
             setupEventListeners();
+            // 初始隐藏所有模式提示
             viewModeIndicator.classList.add('hidden');
+            markModeIndicator.classList.add('hidden');
         }
 
-        // 设置事件监听器
+        // 设置事件监听器：原有事件 + 新增坏点相关事件
         function setupEventListeners() {
+            // 原有事件
             window.addEventListener('resize', resizeCanvas);
             rowMajorOrderCheckbox.addEventListener('change', (e) => {
                 rowMajorOrder = e.target.checked;
                 if (originalData) reloadImageData();
             });
+            // 新增：字节序切换事件
+            littleEndianCheckbox.addEventListener('change', (e) => {
+                littleEndian = e.target.checked;
+            });
             size640512.addEventListener('click', () => { setImageSize(640, 512, size640512) });
             size384288.addEventListener('click', () => { setImageSize(384, 288, size384288) });
             size12801024.addEventListener('click', () => { setImageSize(1280, 1024, size12801024) });
-
             fileInput.addEventListener('change', handleFileSelect);
             setupCanvasEvents();
             window.addEventListener('keydown', handleKeyDown);
+
+            // 新增：坏点检测参数事件
+            thresholdSlider.addEventListener('input', (e) => {
+                threshold = parseInt(e.target.value);
+                thresholdValue.textContent = threshold;
+            });
+
+            // 新增：坏点操作按钮事件
+            detectButton.addEventListener('click', detectBadPoints);
+            startMarkingButton.addEventListener('click', toggleMarkingMode);
+            clearManualButton.addEventListener('click', clearManualMarkings);
+            saveBadMaskButton.addEventListener('click', saveBadMask);
         }
 
+        // 原有分辨率设置函数
         function setImageSize(w, h, activeBtn) {
             widthInput.value = w;
             heightInput.value = h;
@@ -233,6 +351,7 @@
             if (originalData) reloadImageData();
         }
 
+        // 原有画布大小调整
         function resizeCanvas() {
             const container = canvas.parentElement;
             canvas.width = container.clientWidth;
@@ -240,13 +359,14 @@
             if (imageBitmap) drawCanvas();
         }
 
+        // 画布事件：原有 + 适配标记模式
         function setupCanvasEvents() {
             canvas.addEventListener('mousedown', handleMouseDown);
             canvas.addEventListener('mousemove', handleMouseMove);
             window.addEventListener('mouseup', handleMouseUp);
             canvas.addEventListener('wheel', handleMouseWheel);
             canvas.addEventListener('mouseleave', () => {
-                if (!isPixelSelected && !keyboardNavMode) {
+                if (!isPixelSelected && !keyboardNavMode && !isMarkingMode) {
                     currentXEl.textContent = '-';
                     currentYEl.textContent = '-';
                     currentValueEl.textContent = '-';
@@ -254,8 +374,17 @@
             });
         }
 
+        // 【核心改造】键盘事件：兼容原有导航 + 新增标记模式快捷键
         function handleKeyDown(e) {
             if (!imageData) return;
+
+            // 标记模式优先级最高：屏蔽原有导航/选中事件
+            if (isMarkingMode) {
+                handleMarkModeKeyDown(e);
+                return;
+            }
+
+            // 原有键盘导航逻辑
             if(e.key === ' ' && isPixelSelected && !keyboardNavMode) {
                 e.preventDefault();
                 keyboardNavMode = true;
@@ -285,6 +414,46 @@
             }
         }
 
+        // 新增：标记模式键盘事件（完全遵循原坏点工具规则，阻止默认行为）
+        function handleMarkModeKeyDown(e) {
+            let moved = false;
+            switch (e.key) {
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (currentMarkY > 0) { currentMarkY--; moved = true; }
+                    break;
+                case 'ArrowDown':
+                    e.preventDefault();
+                    if (currentMarkY < height - 1) { currentMarkY++; moved = true; }
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (currentMarkX > 0) { currentMarkX--; moved = true; }
+                    break;
+                case 'ArrowRight':
+                    e.preventDefault();
+                    if (currentMarkX < width - 1) { currentMarkX++; moved = true; }
+                    break;
+                case ' ':
+                    e.preventDefault(); // 空格标记/取消
+                    const point = `${currentMarkY},${currentMarkX}`;
+                    manualBadPoints.has(point) ? manualBadPoints.delete(point) : manualBadPoints.add(point);
+                    updateBadCount();
+                    updateBadPointList();
+                    drawCanvas();
+                    break;
+                case 'Enter':
+                    e.preventDefault(); // 回车退出标记模式
+                    toggleMarkingMode();
+                    break;
+            }
+            if (moved) {
+                updateMarkPositionInfo();
+                drawCanvas();
+            }
+        }
+
+        // 原有选中像素信息更新
         function updateSelectedPixelInfo() {
             if (selectedX < 0 || selectedY < 0 || !imageData) return;
             const index = rowMajorOrder ? (selectedY * width + selectedX) : (selectedX * height + selectedY);
@@ -294,17 +463,427 @@
             currentValueEl.textContent = grayValue;
         }
 
-        function drawPixelHighlight() {
-            if (selectedX < 0 || selectedY < 0 || !imageData) return;
+        // 新增：标记模式准星位置信息更新
+        function updateMarkPositionInfo() {
+            if (!imageData) return;
+            const index = rowMajorOrder ? (currentMarkY * width + currentMarkX) : (currentMarkX * height + currentMarkY);
+            const grayValue = imageData[index];
+            currentXEl.textContent = currentMarkX;
+            currentYEl.textContent = currentMarkY;
+            currentValueEl.textContent = grayValue;
+        }
+
+        // 【核心改造】画布绘制：原有绘制 + 坏点/十字准星绘制（与原坏点工具可视化一致）
+        function drawCanvas() {
+            if (!imageBitmap) return;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
             ctx.translate(offsetX, offsetY);
             ctx.scale(scale, scale);
-            ctx.strokeStyle = keyboardNavMode ? '#FF7D00' : '#165DFF';
-            ctx.lineWidth = 0.5 / scale;
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(imageBitmap, 0, 0);
+
+            // 1. 绘制自动坏点：红色半透明小圆（与原工具一致）
+            ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
+            autoBadPoints.forEach(point => {
+                const [y, x] = point.split(',').map(Number);
+                ctx.beginPath();
+                ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 2. 绘制手动坏点：纯蓝色小圆（与原工具一致）
+            ctx.fillStyle = 'rgba(0, 204, 255, 1)';
+            manualBadPoints.forEach(point => {
+                const [y, x] = point.split(',').map(Number);
+                ctx.beginPath();
+                ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 3. 绘制标记模式十字准星：绿色十字（与原工具一致）
+            if (isMarkingMode) {
+                ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
+                ctx.lineWidth = 1 / scale;
+                // 水平线
+                ctx.beginPath();
+                ctx.moveTo(currentMarkX - 3 / scale + 0.5, currentMarkY + 0.5);
+                ctx.lineTo(currentMarkX + 3 / scale + 0.5, currentMarkY + 0.5);
+                ctx.stroke();
+                // 垂直线
+                ctx.beginPath();
+                ctx.moveTo(currentMarkX + 0.5, currentMarkY - 3 / scale + 0.5);
+                ctx.lineTo(currentMarkX + 0.5, currentMarkY + 3 / scale + 0.5);
+                ctx.stroke();
+            }
+
+            ctx.restore();
+            // 原有像素选中高亮
+            drawPixelHighlight();
+        }
+
+        // 原有像素高亮绘制（修改：亮蓝色边框+加粗宽度，更醒目）
+        function drawPixelHighlight() {
+            if (selectedX < 0 || selectedY < 0 || !imageData || isMarkingMode) return;
+            ctx.save();
+            ctx.translate(offsetX, offsetY);
+            ctx.scale(scale, scale);
+            // 替换为更亮的蓝色（#0099FF），橙色导航色不变
+            ctx.strokeStyle = keyboardNavMode ? '#FF7D00' : '#0099FF';
+            // 边框宽度从0.5调为1，缩放后更粗，视觉更醒目
+            ctx.lineWidth = 1 / scale;
             ctx.strokeRect(selectedX, selectedY, 1, 1);
             ctx.restore();
         }
 
+        // 【核心新增】坏点自动检测：适配Y8 8bit灰度（仅改数据类型，逻辑与原工具完全一致）
+        function detectBadPoints() {
+            if (!imageData) return;
+            showLoading();
+            detectButton.disabled = true;
+            try {
+                const neighborhoodSize = parseInt(neighborhoodSelect.value);
+                const halfNeighborhood = Math.floor(neighborhoodSize / 2);
+                const badPoints = new Set();
+
+                // 遍历所有像素（Y8为Uint8Array，直接取灰度值）
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const centerIndex = rowMajorOrder ? (y * width + x) : (x * height + y);
+                        const centerValue = imageData[centerIndex]; // 8bit灰度值
+                        let aboveThresholdCount = 0;
+                        let validNeighbors = 0;
+
+                        // 遍历邻域
+                        for (let ny = -halfNeighborhood; ny <= halfNeighborhood; ny++) {
+                            for (let nx = -halfNeighborhood; nx <= halfNeighborhood; nx++) {
+                                if (nx === 0 && ny === 0) continue;
+                                const neighborX = x + nx;
+                                const neighborY = y + ny;
+                                if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height) {
+                                    const neighborIndex = rowMajorOrder ? (neighborY * width + neighborX) : (neighborX * height + neighborY);
+                                    const neighborValue = imageData[neighborIndex];
+                                    if (Math.abs(centerValue - neighborValue) > threshold) {
+                                        aboveThresholdCount++;
+                                    }
+                                    validNeighbors++;
+                                }
+                            }
+                        }
+
+                        // 判定坏点：超阈值数＞有效邻域数的1/2
+                        if (validNeighbors > 0 && aboveThresholdCount > validNeighbors / 2) {
+                            badPoints.add(`${y},${x}`);
+                        }
+                    }
+                }
+
+                autoBadPoints = badPoints;
+                updateBadCount();
+                updateBadPointList();
+                drawCanvas();
+            } catch (error) {
+                console.error('检测坏点失败:', error);
+                alert('检测坏点失败: ' + error.message);
+            } finally {
+                detectButton.disabled = false;
+                hideLoading();
+            }
+        }
+
+        // 【核心新增】标记模式切换：与原工具交互一致，UI联动
+        function toggleMarkingMode() {
+            if (!imageData) return;
+            if (isMarkingMode) {
+                // 退出标记模式
+                isMarkingMode = false;
+                startMarkingButton.innerHTML = '<i class="fa fa-mouse-pointer"></i> 开始手动标记';
+                startMarkingButton.className = 'btn-secondary w-full';
+                markModeIndicator.classList.add('hidden');
+                viewModeIndicator.classList.remove('hidden');
+                canvas.style.cursor = 'grab';
+                // 恢复像素信息默认显示
+                if (!isPixelSelected) {
+                    currentXEl.textContent = '-';
+                    currentYEl.textContent = '-';
+                    currentValueEl.textContent = '-';
+                } else {
+                    updateSelectedPixelInfo();
+                }
+            } else {
+                // 进入标记模式：屏蔽原有选中/导航
+                isMarkingMode = true;
+                keyboardNavMode = false;
+                isPixelSelected = false;
+                keyboardNavHint.classList.add('hidden');
+                pixelSelectHint.classList.add('hidden');
+                startMarkingButton.innerHTML = '<i class="fa fa-stop"></i> 退出手动标记';
+                startMarkingButton.className = 'btn-primary w-full';
+                markModeIndicator.classList.remove('hidden');
+                viewModeIndicator.classList.add('hidden');
+                // 准星默认居中
+                currentMarkX = Math.floor(width / 2);
+                currentMarkY = Math.floor(height / 2);
+                updateMarkPositionInfo();
+                canvas.style.cursor = 'crosshair';
+            }
+            drawCanvas();
+        }
+
+        // 新增：清除手动标记（带确认弹窗）
+        function clearManualMarkings() {
+            if (confirm('确定要清除所有手动标记的坏点吗？')) {
+                manualBadPoints.clear();
+                updateBadCount();
+                updateBadPointList();
+                drawCanvas();
+            }
+        }
+
+        // 【核心新增】保存16bit坏点掩码：与原工具格式完全一致（坏点0x1000，正常0，16bit二进制）
+        function saveBadMask() {
+            if (!imageData) return;
+            showLoading();
+            try {
+                const totalPixels = width * height;
+                const totalBytes = totalPixels * 2; // 16bit=2字节/像素
+                const badFlagData = new Uint16Array(totalPixels); // 16bit无符号整型
+                const allBadPoints = new Set([...autoBadPoints, ...manualBadPoints]);
+
+                // 赋值：坏点=0x1000，正常=0
+                allBadPoints.forEach(point => {
+                    const [y, x] = point.split(',').map(Number);
+                    const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+                    badFlagData[index] = 0x1000;
+                });
+
+                // 转换字节序（大/小端），生成Uint8Array
+                const byteData = new Uint8Array(totalBytes);
+                for (let i = 0; i < totalPixels; i++) {
+                    const byteOffset = i * 2;
+                    const value = badFlagData[i];
+                    if (littleEndian) {
+                        byteData[byteOffset] = value & 0xFF; // 低字节在前
+                        byteData[byteOffset + 1] = (value >> 8) & 0xFF; // 高字节在后
+                    } else {
+                        byteData[byteOffset] = (value >> 8) & 0xFF; // 高字节在前（默认）
+                        byteData[byteOffset + 1] = value & 0xFF; // 低字节在后
+                    }
+                }
+
+                // 生成二进制文件，保存为 原文件名_bad.bin
+                const blob = new Blob([byteData.buffer], { type: 'application/octet-stream' });
+                const url = 网站.createObjectURL(blob);
+                const a = document.createElement('a');
+                let downloadName = 'y8_bad_points.bin';
+                if (fileInput.files[0]) {
+                    downloadName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + "_bad.bin";
+                }
+                a.href = url;
+                a.download = downloadName;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                网站.revokeObjectURL(url);
+                alert('16bit坏点掩码保存成功！');
+            } catch (error) {
+                console.error('保存坏点掩码失败:', error);
+                alert('保存失败: ' + error.message);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 新增：更新坏点统计（自动/手动/总计/占比）
+        function updateBadCount() {
+            const autoCount = autoBadPoints.size;
+            const manualCount = manualBadPoints.size;
+            const totalCount = autoCount + manualCount;
+            const totalPixels = width * height;
+            const percentage = totalPixels > 0 ? (totalCount / totalPixels * 100).toFixed(6) : '0.0000';
+
+            autoBadCount.textContent = autoCount;
+            manualBadCount.textContent = manualCount;
+            totalBadCount.textContent = totalCount;
+            badPercentage.textContent = percentage;
+        }
+
+        // 新增：更新坏点列表（点击坐标跳转放大，与原工具一致）
+        function updateBadPointList() {
+            // 自动坏点：红色，手动坏点：蓝色，按坐标排序
+            const autoList = Array.from(autoBadPoints)
+                .sort((a, b) => {
+                    const [ya, xa] = a.split(',').map(Number);
+                    const [yb, xb] = b.split(',').map(Number);
+                    return ya - yb || xa - xb;
+                })
+                .map(point => {
+                    const [y, x] = point.split(',').map(Number);
+                    return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-red-400">(${x}, ${y})</span> <span class="text-red-300 text-xs">自动</span></div>`;
+                });
+
+            const manualList = Array.from(manualBadPoints)
+                .sort((a, b) => {
+                    const [ya, xa] = a.split(',').map(Number);
+                    const [yb, xb] = b.split(',').map(Number);
+                    return ya - yb || xa - xb;
+                })
+                .map(point => {
+                    const [y, x] = point.split(',').map(Number);
+                    return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-blue-400">(${x}, ${y})</span> <span class="text-blue-300 text-xs">手动</span></div>`;
+                });
+
+            const allPoints = [...autoList, ...manualList];
+
+            if (allPoints.length === 0) {
+                badPointListPanel.innerHTML = `
+                    <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
+                    <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
+                `;
+            } else {
+                badPointListPanel.innerHTML = `
+                    <p class="font-medium mb-1 text-green-400">📌 坏点列表（共 ${allPoints.length} 个，点击坐标可跳转放大）：</p>
+                    <div class="flex flex-col gap-1 mt-1">${allPoints.join('')}</div>
+                `;
+            }
+        }
+
+        // 新增：点击坏点坐标跳转并放大8倍
+        function centerOnPoint(x, y) {
+            scale = 8;
+            offsetX = canvas.width / 2 - (x + 0.5) * scale;
+            offsetY = canvas.height / 2 - (y + 0.5) * scale;
+            drawCanvas();
+        }
+
+        // 原有鼠标按下事件：适配标记模式
+        function handleMouseDown(e) {
+            if (!imageData) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const imgX = Math.floor((mouseX - offsetX) / scale);
+            const imgY = Math.floor((mouseY - offsetY) / scale);
+
+            // 标记模式：点击定位准星 + 允许拖拽
+            if (isMarkingMode) {
+                if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+                    currentMarkX = imgX;
+                    currentMarkY = imgY;
+                    updateMarkPositionInfo();
+                    drawCanvas();
+                }
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            // 原有非标记模式逻辑
+            if (keyboardNavMode) {
+                if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+                    isPixelSelected = true;
+                    selectedX = imgX;
+                    selectedY = imgY;
+                    updateSelectedPixelInfo();
+                    drawCanvas();
+                }
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+                canvas.style.cursor = 'grabbing';
+                return;
+            }
+
+            if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+                isPixelSelected = true;
+                selectedX = imgX;
+                selectedY = imgY;
+                pixelSelectHint.classList.remove('hidden');
+                updateSelectedPixelInfo();
+                drawCanvas();
+            } else {
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+                canvas.style.cursor = 'grabbing';
+            }
+            if(e.button === 0) {
+                isDragging = true;
+                lastX = mouseX;
+                lastY = mouseY;
+            }
+        }
+
+        // 原有鼠标移动事件：适配标记模式
+        function handleMouseMove(e) {
+            if (!imageData) return;
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            if (isDragging) {
+                const dx = mouseX - lastX;
+                const dy = mouseY - lastY;
+                offsetX += dx;
+                offsetY += dy;
+                lastX = mouseX;
+                lastY = mouseY;
+                drawCanvas();
+                return;
+            }
+
+            // 标记模式：鼠标悬浮不更新像素信息，仅准星控制
+            if (isMarkingMode) {
+                canvas.style.cursor = 'crosshair';
+                return;
+            }
+
+            // 原有非标记模式逻辑
+            if (!isPixelSelected && !keyboardNavMode) {
+                const x = Math.floor((mouseX - offsetX) / scale);
+                const y = Math.floor((mouseY - offsetY) / scale);
+                if (x >= 0 && x < width && y >= 0 && y < height) {
+                    const index = rowMajorOrder ? (y * width + x) : (x * height + y);
+                    currentXEl.textContent = x;
+                    currentYEl.textContent = y;
+                    currentValueEl.textContent = imageData[index];
+                } else {
+                    currentXEl.textContent = '-';
+                    currentYEl.textContent = '-';
+                    currentValueEl.textContent = '-';
+                }
+            }
+            canvas.style.cursor = isPixelSelected ? 'default' : 'grab';
+        }
+
+        // 原有鼠标松开事件
+        function handleMouseUp() {
+            if (isDragging) {
+                isDragging = false;
+                canvas.style.cursor = isMarkingMode ? 'crosshair' : (isPixelSelected ? 'default' : 'grab');
+            }
+        }
+
+        // 原有鼠标滚轮缩放
+        function handleMouseWheel(e) {
+            if (!imageData) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const imgX = (mouseX - offsetX) / scale;
+            const imgY = (mouseY - offsetY) / scale;
+            const zoomIntensity = 0.1;
+            scale = e.deltaY < 0 ? scale * (1 + zoomIntensity) : scale / (1 + zoomIntensity);
+            scale = Math.min(Math.max(0.1, scale), 10);
+            offsetX = mouseX - imgX * scale;
+            offsetY = mouseY - imgY * scale;
+            drawCanvas();
+        }
+
+        // 原有重新加载图像
         function reloadImageData() {
             if (!originalData) return;
             showLoading();
@@ -321,6 +900,11 @@
                 calculateImageStats();
                 createOriginalImageBitmap();
                 resetView();
+                // 重置坏点
+                autoBadPoints.clear();
+                manualBadPoints.clear();
+                updateBadCount();
+                updateBadPointList();
                 hideLoading();
             } catch (error) {
                 console.error('重新加载图像失败:', error);
@@ -328,12 +912,12 @@
             }
         }
 
+        // 原有文件选择处理
         async function handleFileSelect(e) {
             const file = e.target.files[0];
             if (!file) return;
             showLoading();
             fileName.textContent = file.name;
-            fileInfo.classList.remove('hidden');
             viewModeIndicator.classList.add('hidden');
             try {
                 const arrayBuffer = await readFileAsync(file);
@@ -354,6 +938,16 @@
                 resetView();
                 noImageHint.classList.add('hidden');
                 viewModeIndicator.classList.remove('hidden');
+                // 启用坏点操作按钮
+                detectButton.disabled = false;
+                startMarkingButton.disabled = false;
+                clearManualButton.disabled = false;
+                saveBadMaskButton.disabled = false;
+                // 重置坏点
+                autoBadPoints.clear();
+                manualBadPoints.clear();
+                updateBadCount();
+                updateBadPointList();
             } catch (error) {
                 console.error('加载Y8文件失败:', error);
                 alert('加载文件失败: ' + error.message);
@@ -362,6 +956,7 @@
             }
         }
 
+        // 原有图像统计计算
         function calculateImageStats() {
             if (!imageData) return;
             const sortedValues = new Uint8Array(imageData);
@@ -379,6 +974,7 @@
             `;
         }
 
+        // 原有Y8图像转ImageBitmap
         function createOriginalImageBitmap() {
             if (!imageData) return;
             const rgbaData = new Uint8ClampedArray(width * height * 4);
@@ -400,122 +996,7 @@
             });
         }
 
-        function drawCanvas() {
-            if (!imageBitmap) return;
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.save();
-            ctx.translate(offsetX, offsetY);
-            ctx.scale(scale, scale);
-            ctx.imageSmoothingEnabled = false;
-            ctx.drawImage(imageBitmap, 0, 0);
-            ctx.restore();
-            drawPixelHighlight();
-        }
-
-        // ========== ✅ 核心最终修改 【完美匹配需求】 ==========
-        function handleMouseDown(e) {
-            if (!imageData) return;
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            const imgX = Math.floor((mouseX - offsetX) / scale);
-            const imgY = Math.floor((mouseY - offsetY) / scale);
-
-            // 1. 如果在键盘导航模式中
-            if(keyboardNavMode) {
-                // ✅ 能选中新像素+更新信息+重绘高亮框
-                if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
-                    isPixelSelected = true;
-                    selectedX = imgX;
-                    selectedY = imgY;
-                    updateSelectedPixelInfo();
-                    drawCanvas();
-                }
-                // ✅ 不显示「已选中像素」提示框 + 保留拖动功能
-                isDragging = true;
-                lastX = mouseX;
-                lastY = mouseY;
-                canvas.style.cursor = 'grabbing';
-                return;
-            }
-
-            // 2. 非导航模式，执行原有完整逻辑（含蓝色提示框）
-            if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
-                isPixelSelected = true;
-                selectedX = imgX;
-                selectedY = imgY;
-                pixelSelectHint.classList.remove('hidden');
-                updateSelectedPixelInfo();
-                drawCanvas();
-            } else {
-                isDragging = true;
-                lastX = mouseX;
-                lastY = mouseY;
-                canvas.style.cursor = 'grabbing';
-            }
-            if(e.button === 0) {
-                isDragging = true;
-                lastX = mouseX;
-                lastY = mouseY;
-            }
-        }
-
-        function handleMouseMove(e) {
-            if (!imageData) return;
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            if (isDragging) {
-                const dx = mouseX - lastX;
-                const dy = mouseY - lastY;
-                offsetX += dx;
-                offsetY += dy;
-                lastX = mouseX;
-                lastY = mouseY;
-                drawCanvas();
-                return;
-            }
-
-            if (!isPixelSelected && !keyboardNavMode) {
-                const x = Math.floor((mouseX - offsetX) / scale);
-                const y = Math.floor((mouseY - offsetY) / scale);
-                if (x >= 0 && x < width && y >= 0 && y < height) {
-                    const index = rowMajorOrder ? (y * width + x) : (x * height + y);
-                    currentXEl.textContent = x;
-                    currentYEl.textContent = y;
-                    currentValueEl.textContent = imageData[index];
-                } else {
-                    currentXEl.textContent = '-';
-                    currentYEl.textContent = '-';
-                    currentValueEl.textContent = '-';
-                }
-            }
-        }
-
-        function handleMouseUp() {
-            if (isDragging) {
-                isDragging = false;
-                canvas.style.cursor = 'grab';
-            }
-        }
-
-        function handleMouseWheel(e) {
-            if (!imageData) return;
-            e.preventDefault();
-            const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-            const imgX = (mouseX - offsetX) / scale;
-            const imgY = (mouseY - offsetY) / scale;
-            const zoomIntensity = 0.1;
-            scale = e.deltaY < 0 ? scale * (1 + zoomIntensity) : scale / (1 + zoomIntensity);
-            scale = Math.min(Math.max(0.1, scale), 10);
-            offsetX = mouseX - imgX * scale;
-            offsetY = mouseY - imgY * scale;
-            drawCanvas();
-        }
-
+        // 原有视图重置
         function resetView() {
             const scaleX = canvas.width / width;
             const scaleY = canvas.height / height;
@@ -525,6 +1006,7 @@
             drawCanvas();
         }
 
+        // 原有工具函数
         function showLoading() { loadingIndicator.classList.remove('hidden'); }
         function hideLoading() { loadingIndicator.classList.add('hidden'); }
         function readFileAsync(file) {
