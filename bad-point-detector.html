@@ -663,6 +663,7 @@
         clearManualButton.disabled = false;
         autoAdjustButton.disabled = false;
         noImageHint.classList.add('hidden');
+        canvas.style.cursor = 'grab';
         viewModeIndicator.classList.remove('hidden');
       } catch (error) {
         console.error('加载文件失败:', error);
@@ -833,7 +834,8 @@
       currentXEl.textContent = '-';
       currentYEl.textContent = '-';
       currentValueEl.textContent = '-';
-      document.body.style.cursor = '';
+      ; document.body.style.cursor = '';
+      canvas.style.cursor = 'crosshair';
       viewModeIndicator.classList.remove('hidden');
       markModeIndicator.classList.add('hidden');
     } else {
@@ -845,6 +847,7 @@
       currentY = Math.floor(height / 2);
       updateCurrentPositionInfo();
       document.body.style.cursor = 'crosshair';
+      canvas.style.cursor = 'grab';
       viewModeIndicator.classList.add('hidden');
       markModeIndicator.classList.remove('hidden');
     }
@@ -909,28 +912,31 @@
       }
     }
 
-    function handleMouseDown(e) {
-      if (!imageData) return;
-      const rect = canvas.getBoundingClientRect();
-      const mouseX = e.clientX - rect.left;
-      const mouseY = e.clientY - rect.top;
-      const imgX = Math.floor((mouseX - offsetX) / scale);
-      const imgY = Math.floor((mouseY - offsetY) / scale);
+  function handleMouseDown(e) {
+    if (!imageData) return;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const imgX = Math.floor((mouseX - offsetX) / scale);
+    const imgY = Math.floor((mouseY - offsetY) / scale);
 
+    // 只有点击在图像范围内才响应
+    if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
+      // 【核心新增】无论是否标记模式，都允许开始拖动
+      isDragging = true;
+      lastX = mouseX;
+      lastY = mouseY;
+      canvas.style.cursor = 'grabbing';
+
+      // 【保留原有功能】标记模式下，点击同时定位十字准星
       if (isMarkingMode) {
-        if (imgX >= 0 && imgX < width && imgY >= 0 && imgY < height) {
-          currentX = imgX;
-          currentY = imgY;
-          updateCurrentPositionInfo();
-          drawCanvas();
-        }
-      } else {
-        isDragging = true;
-        lastX = mouseX;
-        lastY = mouseY;
-        canvas.style.cursor = 'grabbing';
+        currentX = imgX;
+        currentY = imgY;
+        updateCurrentPositionInfo();
+        drawCanvas();  // 立即刷新显示新的十字准星
       }
     }
+  }
 
     function handleMouseMove(e) {
       if (!imageData) return;
@@ -957,6 +963,13 @@
         currentXEl.textContent = x;
         currentYEl.textContent = y;
         currentValueEl.textContent = value;
+        if (!isDragging) {
+        canvas.style.cursor = isMarkingMode ? 'crosshair' : 'grab';
+      }else {
+      if (!isDragging) {
+        canvas.style.cursor = 'default';
+      }
+      }
       } else {
         currentXEl.textContent = '-';
         currentYEl.textContent = '-';
@@ -967,7 +980,8 @@
     function handleMouseUp() {
       if (isDragging) {
         isDragging = false;
-        canvas.style.cursor = 'grab';
+        // 根据当前模式恢复合适的光标
+        canvas.style.cursor = isMarkingMode ? 'crosshair' : 'grab';
       }
     }
 
