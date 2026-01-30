@@ -26,6 +26,7 @@
     </script>
     <style type="text/tailwindcss">
         @layer utilities {
+            .btn-short:active { @apply bg-gray-300 scale-95 transition-all duration-100; }
             .content-auto {
                 content-visibility: auto;
             }
@@ -151,10 +152,14 @@
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">检测参数</h2>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">差异阈值</label>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">差异阈值 (1-50)</label>
                             <div class="flex items-center gap-2">
-                                <input type="range" id="thresholdSlider" min="10" max="200" value="50" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
-                                <span id="thresholdValue" class="text-sm font-medium min-w-[40px] text-center">50</span>
+                                <!-- 新增：减1按钮 -->
+                                <button id="thresholdMinus" class="btn-short w-8 h-8 p-0 flex items-center justify-center">-1</button>
+                                <input type="range" id="thresholdSlider" min="1" max="50" value="20" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                                <!-- 新增：加1按钮 -->
+                                <button id="thresholdPlus" class="btn-short w-8 h-8 p-0 flex items-center justify-center">+1</button>
+                                <span id="thresholdValue" class="text-sm font-medium min-w-[40px] text-center">20</span>
                             </div>
                         </div>
                         <div>
@@ -261,7 +266,7 @@
         let isMarkingMode = false;     // 是否处于坏点标记模式
         let currentMarkX = 0;          // 标记模式十字准星X
         let currentMarkY = 0;          // 标记模式十字准星Y
-        let threshold = 50;            // 坏点检测灰度差阈值
+        let threshold = 20;            // 坏点检测灰度差阈值
 
         // 【DOM元素】原有元素 + 新增坏点相关元素
         const fileInput = document.getElementById('fileInput');
@@ -291,6 +296,8 @@
         const thresholdSlider = document.getElementById('thresholdSlider');
         const thresholdValue = document.getElementById('thresholdValue');
         const neighborhoodSelect = document.getElementById('neighborhoodSelect');
+        const thresholdMinus = document.getElementById('thresholdMinus');
+        const thresholdPlus = document.getElementById('thresholdPlus');
         const autoBadCount = document.getElementById('autoBadCount');
         const manualBadCount = document.getElementById('manualBadCount');
         const totalBadCount = document.getElementById('totalBadCount');
@@ -330,7 +337,21 @@
                 threshold = parseInt(e.target.value);
                 thresholdValue.textContent = threshold;
             });
-
+            // 新增：阈值±1按钮点击事件（带1-50边界限制 + 双向联动）
+            thresholdMinus.addEventListener('click', () => {
+                if (threshold > 1) { // 不能小于最小值1
+                    threshold--;
+                    thresholdSlider.value = threshold; // 同步滑块位置
+                    thresholdValue.textContent = threshold; // 同步显示值
+                }
+            });
+            thresholdPlus.addEventListener('click', () => {
+                if (threshold < 50) { // 不能大于最大值50
+                    threshold++;
+                    thresholdSlider.value = threshold; // 同步滑块位置
+                    thresholdValue.textContent = threshold; // 同步显示值
+                }
+            });
             // 新增：坏点操作按钮事件
             detectButton.addEventListener('click', detectBadPoints);
             startMarkingButton.addEventListener('click', toggleMarkingMode);
@@ -673,7 +694,7 @@
 
                 // 生成二进制文件，保存为 原文件名_bad.bin
                 const blob = new Blob([byteData.buffer], { type: 'application/octet-stream' });
-                const url = 网站.createObjectURL(blob);
+                const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 let downloadName = 'y8_bad_points.bin';
                 if (fileInput.files[0]) {
@@ -684,7 +705,7 @@
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                网站.revokeObjectURL(url);
+                URL.revokeObjectURL(url);
                 alert('16bit坏点掩码保存成功！');
             } catch (error) {
                 console.error('保存坏点掩码失败:', error);
