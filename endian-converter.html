@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>16位RAW大小端转换工具</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#165DFF',
+                        secondary: '#36CFC9',
+                        accent: '#FF7D00',
+                        dark: '#1D2129',
+                        light: '#F2F3F5'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .panel {
+                @apply bg-white rounded-xl shadow-md p-5;
+            }
+            .btn-primary {
+                @apply bg-primary hover:bg-primary/90 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-5 py-3 rounded-lg font-medium transition-all duration-200 flex items-center justify-center gap-2;
+            }
+            .btn-secondary {
+                @apply bg-white border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg transition-all duration-200;
+            }
+            .option-btn {
+                @apply border border-gray-300 bg-white hover:bg-blue-50 hover:border-primary px-3 py-2 rounded-lg text-sm transition-all;
+            }
+            .option-active {
+                @apply bg-primary text-white border-primary hover:bg-primary hover:text-white;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen font-sans text-dark">
+    <div class="container mx-auto max-w-5xl px-4 py-8">
+        <a href="index.html" class="inline-flex items-center gap-2 text-primary hover:underline mb-5">
+            <i class="fa fa-arrow-left"></i>
+            返回工具导航
+        </a>
+
+        <header class="mb-7">
+            <h1 class="text-[clamp(1.6rem,4vw,2.6rem)] font-bold flex items-center gap-3">
+                <i class="fa fa-exchange text-primary"></i>
+                16位RAW大小端转换工具
+            </h1>
+            <p class="text-gray-500 mt-2">逐像素交换高低字节，支持大端与小端双向转换；文件只在当前浏览器中处理。</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <section class="panel">
+                    <h2 class="text-lg font-semibold border-b pb-3 mb-4">1. 选择16位RAW文件</h2>
+                    <label id="dropZone" class="block border-2 border-dashed border-gray-300 hover:border-primary rounded-xl p-8 text-center cursor-pointer transition-colors">
+                        <i class="fa fa-cloud-upload text-4xl text-primary mb-3"></i>
+                        <span class="block font-medium">点击选择或拖入RAW文件</span>
+                        <span class="block text-sm text-gray-400 mt-1">支持 .raw、.bin、.dat、.y16</span>
+                        <input id="fileInput" type="file" accept=".raw,.bin,.dat,.y16,application/octet-stream" class="hidden">
+                    </label>
+                    <div id="fileInfo" class="hidden mt-4 rounded-lg bg-light border border-gray-200 p-4 text-sm">
+                        <div class="flex items-center gap-2">
+                            <i class="fa fa-file-o text-primary"></i>
+                            <span id="fileName" class="font-medium break-all"></span>
+                        </div>
+                        <p class="text-gray-500 mt-1">文件大小：<span id="fileSize"></span></p>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2 class="text-lg font-semibold border-b pb-3 mb-4">2. 设置转换参数</h2>
+
+                    <div class="mb-5">
+                        <label class="block text-sm font-medium mb-2">图像分辨率</label>
+                        <div id="resolutionOptions" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <button type="button" class="option-btn" data-width="384" data-height="288">384 × 288</button>
+                            <button type="button" class="option-btn option-active" data-width="640" data-height="512">640 × 512</button>
+                            <button type="button" class="option-btn" data-width="1280" data-height="1024">1280 × 1024</button>
+                        </div>
+                        <p id="expectedSize" class="text-xs text-gray-500 mt-2"></p>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2">转换方向</label>
+                        <div id="directionOptions" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <button type="button" class="option-btn option-active" data-direction="BE_to_LE">
+                                大端 <i class="fa fa-long-arrow-right mx-2"></i> 小端
+                            </button>
+                            <button type="button" class="option-btn" data-direction="LE_to_BE">
+                                小端 <i class="fa fa-long-arrow-right mx-2"></i> 大端
+                            </button>
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">两个方向都执行相同的高低字节交换；方向用于明确输入格式和输出文件名。</p>
+                    </div>
+                </section>
+
+                <section class="panel">
+                    <h2 class="text-lg font-semibold border-b pb-3 mb-4">3. 转换并下载</h2>
+                    <div id="validationMessage" class="rounded-lg bg-blue-50 border border-blue-200 text-blue-700 p-3 text-sm mb-4">
+                        请先选择文件。工具会按分辨率校验文件大小。
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button id="convertButton" class="btn-primary flex-1" disabled>
+                            <i class="fa fa-refresh"></i>
+                            转换并下载
+                        </button>
+                        <button id="resetButton" class="btn-secondary">
+                            <i class="fa fa-undo mr-1"></i>
+                            重新选择
+                        </button>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="space-y-6">
+                <section class="panel">
+                    <h2 class="text-lg font-semibold border-b pb-3 mb-4">格式说明</h2>
+                    <ul class="text-sm text-gray-600 space-y-3">
+                        <li class="flex gap-2">
+                            <i class="fa fa-check-circle text-green-500 mt-0.5"></i>
+                            <span>每个像素固定为16位，即2字节。</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <i class="fa fa-check-circle text-green-500 mt-0.5"></i>
+                            <span>仅交换每个像素的两个字节，不改变像素排列。</span>
+                        </li>
+                        <li class="flex gap-2">
+                            <i class="fa fa-check-circle text-green-500 mt-0.5"></i>
+                            <span>有符号与无符号16位数据均可转换。</span>
+                        </li>
+                    </ul>
+                </section>
+
+                <section class="panel">
+                    <h2 class="text-lg font-semibold border-b pb-3 mb-4">字节预览</h2>
+                    <div class="space-y-4 text-sm">
+                        <div>
+                            <p class="text-gray-500 mb-1">转换前（前16字节）</p>
+                            <code id="inputPreview" class="block bg-dark text-green-300 rounded-lg p-3 min-h-[3rem] break-words">--</code>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 mb-1">转换后（前16字节）</p>
+                            <code id="outputPreview" class="block bg-dark text-cyan-300 rounded-lg p-3 min-h-[3rem] break-words">--</code>
+                        </div>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
+            <p>16位RAW大小端转换工具 &copy; 2026</p>
+        </footer>
+    </div>
+
+    <script>
+        const RESOLUTIONS = [
+            { width: 384, height: 288 },
+            { width: 640, height: 512 },
+            { width: 1280, height: 1024 }
+        ];
+
+        let selectedFile = null;
+        let selectedWidth = 640;
+        let selectedHeight = 512;
+        let selectedDirection = 'BE_to_LE';
+        let inputBuffer = null;
+
+        const fileInput = document.getElementById('fileInput');
+        const dropZone = document.getElementById('dropZone');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileSize = document.getElementById('fileSize');
+        const expectedSize = document.getElementById('expectedSize');
+        const validationMessage = document.getElementById('validationMessage');
+        const convertButton = document.getElementById('convertButton');
+        const resetButton = document.getElementById('resetButton');
+        const inputPreview = document.getElementById('inputPreview');
+        const outputPreview = document.getElementById('outputPreview');
+        const resolutionButtons = [...document.querySelectorAll('#resolutionOptions button')];
+        const directionButtons = [...document.querySelectorAll('#directionOptions button')];
+
+        function getExpectedBytes() {
+            return selectedWidth * selectedHeight * 2;
+        }
+
+        function formatBytes(bytes) {
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
+            return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+        }
+
+        function bytesToHex(bytes, limit = 16) {
+            return [...bytes.slice(0, limit)]
+                .map(value => value.toString(16).padStart(2, '0').toUpperCase())
+                .join(' ') || '--';
+        }
+
+        function swapEndian16(buffer) {
+            if (buffer.byteLength % 2 !== 0) {
+                throw new Error('16位数据的文件字节数必须为偶数。');
+            }
+
+            const source = new Uint8Array(buffer);
+            const result = new Uint8Array(source.length);
+            for (let index = 0; index < source.length; index += 2) {
+                result[index] = source[index + 1];
+                result[index + 1] = source[index];
+            }
+            return result;
+        }
+
+        function setActiveButton(buttons, activeButton) {
+            buttons.forEach(button => button.classList.toggle('option-active', button === activeButton));
+        }
+
+        function updateExpectedSize() {
+            const bytes = getExpectedBytes();
+            expectedSize.textContent = `16位文件应为 ${bytes.toLocaleString('zh-CN')} 字节（${formatBytes(bytes)}）`;
+        }
+
+        function showValidation(type, message) {
+            const styles = {
+                info: 'bg-blue-50 border-blue-200 text-blue-700',
+                success: 'bg-green-50 border-green-200 text-green-700',
+                error: 'bg-red-50 border-red-200 text-red-700'
+            };
+            validationMessage.className = `rounded-lg border p-3 text-sm mb-4 ${styles[type]}`;
+            validationMessage.textContent = message;
+        }
+
+        function validateFile() {
+            convertButton.disabled = true;
+            outputPreview.textContent = '--';
+
+            if (!selectedFile || !inputBuffer) {
+                showValidation('info', '请先选择文件。工具会按分辨率校验文件大小。');
+                return false;
+            }
+
+            const expected = getExpectedBytes();
+            if (selectedFile.size !== expected) {
+                showValidation(
+                    'error',
+                    `文件大小不匹配：当前文件为 ${selectedFile.size.toLocaleString('zh-CN')} 字节，` +
+                    `${selectedWidth}×${selectedHeight} 的16位RAW文件应为 ${expected.toLocaleString('zh-CN')} 字节。`
+                );
+                return false;
+            }
+
+            convertButton.disabled = false;
+            showValidation(
+                'success',
+                `校验通过：${selectedWidth}×${selectedHeight}，共 ${(selectedWidth * selectedHeight).toLocaleString('zh-CN')} 个16位像素。`
+            );
+            return true;
+        }
+
+        function selectResolution(width, height) {
+            selectedWidth = width;
+            selectedHeight = height;
+            const activeButton = resolutionButtons.find(
+                button => Number(button.dataset.width) === width && Number(button.dataset.height) === height
+            );
+            setActiveButton(resolutionButtons, activeButton);
+            updateExpectedSize();
+            validateFile();
+        }
+
+        function autoDetectResolution(size) {
+            return RESOLUTIONS.find(item => item.width * item.height * 2 === size) || null;
+        }
+
+        async function loadFile(file) {
+            if (!file) return;
+
+            selectedFile = file;
+            inputBuffer = await file.arrayBuffer();
+            fileName.textContent = file.name;
+            fileSize.textContent = `${file.size.toLocaleString('zh-CN')} 字节（${formatBytes(file.size)}）`;
+            fileInfo.classList.remove('hidden');
+            inputPreview.textContent = bytesToHex(new Uint8Array(inputBuffer));
+
+            const detected = autoDetectResolution(file.size);
+            if (detected) {
+                selectResolution(detected.width, detected.height);
+            } else {
+                validateFile();
+            }
+        }
+
+        function buildOutputName() {
+            const baseName = selectedFile.name.replace(/\.[^.]+$/, '') || 'converted';
+            return `${baseName}_${selectedDirection}_${selectedWidth}x${selectedHeight}.raw`;
+        }
+
+        function convertAndDownload() {
+            if (!validateFile()) return;
+
+            try {
+                const converted = swapEndian16(inputBuffer);
+                outputPreview.textContent = bytesToHex(converted);
+
+                const blob = new Blob([converted], { type: 'application/octet-stream' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = buildOutputName();
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+                showValidation('success', `转换完成，已下载：${link.download}`);
+            } catch (error) {
+                showValidation('error', `转换失败：${error.message}`);
+            }
+        }
+
+        function resetTool() {
+            selectedFile = null;
+            inputBuffer = null;
+            fileInput.value = '';
+            fileInfo.classList.add('hidden');
+            inputPreview.textContent = '--';
+            outputPreview.textContent = '--';
+            validateFile();
+        }
+
+        resolutionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                selectResolution(Number(button.dataset.width), Number(button.dataset.height));
+            });
+        });
+
+        directionButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                selectedDirection = button.dataset.direction;
+                setActiveButton(directionButtons, button);
+                outputPreview.textContent = '--';
+            });
+        });
+
+        fileInput.addEventListener('change', event => loadFile(event.target.files[0]));
+        convertButton.addEventListener('click', convertAndDownload);
+        resetButton.addEventListener('click', resetTool);
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, event => {
+                event.preventDefault();
+                dropZone.classList.add('border-primary', 'bg-blue-50');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, event => {
+                event.preventDefault();
+                dropZone.classList.remove('border-primary', 'bg-blue-50');
+            });
+        });
+
+        dropZone.addEventListener('drop', event => loadFile(event.dataTransfer.files[0]));
+
+        updateExpectedSize();
+
+        // 暴露纯转换函数，便于自动化验证。
+        window.endianConverter = { swapEndian16, resolutions: RESOLUTIONS };
+    </script>
+</body>
+</html>
