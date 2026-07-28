@@ -45,6 +45,12 @@
             .btn-accent {
                 @apply bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
             }
+            .btn-danger {
+                @apply bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
+            }
+            .btn-danger.hidden {
+                display: none !important;
+            }
             .btn-short {
                 @apply bg-gray-50 border border-gray-300 hover:bg-gray-200 px-2 py-1 rounded text-sm transition-all;
             }
@@ -77,6 +83,10 @@
 </head>
 <body class="bg-gray-50 min-h-screen font-sans">
     <div class="container mx-auto px-4 py-6 max-w-7xl">
+        <a href="index.html" class="inline-flex items-center gap-2 text-primary hover:underline mb-4">
+            <i class="fa fa-arrow-left"></i>
+            返回工具导航
+        </a>
         <header class="mb-6">
             <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center gap-3">
                 <i class="fa fa-file-image-o text-primary"></i>
@@ -86,9 +96,9 @@
         </header>
 
         <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            <div class="lg:col-span-1 space-y-4">
+            <div class="lg:col-span-1 flex flex-col gap-4">
                 <!-- 文件操作面板 -->
-                <div class="control-panel">
+                <div class="control-panel order-1">
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">文件操作</h2>
                     <div class="space-y-3">
                         <label class="btn-primary w-full cursor-pointer">
@@ -97,14 +107,15 @@
                         </label>
                         <div id="fileInfo" class="text-sm text-gray-500">
                             <p id="fileName" class="truncate">未选择文件</p>
+                            <p id="fileSizeStatus" class="text-xs mt-1">请选择与分辨率严格匹配的Y8文件</p>
                             <div class="grid grid-cols-2 gap-2 mt-2">
                                 <div>
                                     <label class="block text-xs text-gray-500">宽度</label>
-                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1" value="640" min="1">
+                                    <input type="number" id="widthInput" class="w-full text-sm border rounded px-2 py-1 bg-gray-50" value="640" min="1" readonly>
                                 </div>
                                 <div>
                                     <label class="block text-xs text-gray-500">高度</label>
-                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1" value="512" min="1">
+                                    <input type="number" id="heightInput" class="w-full text-sm border rounded px-2 py-1 bg-gray-50" value="512" min="1" readonly>
                                 </div>
                             </div>
                             <div class="flex gap-2 mt-2">
@@ -119,12 +130,16 @@
                                 </div>
                                 <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
                                     <input type="checkbox" id="littleEndian">
-                                    <label for="littleEndian" class="text-sm">小端字节序</label>
+                                    <label for="littleEndian" class="text-sm">输出BIN使用小端序</label>
                                     <span class="text-[10px] text-gray-400">(默认大端)</span>
                                 </div>
                                 <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200 text-gray-400">
                                     <i class="fa fa-info-circle"></i>
                                     <label class="text-sm">Y8格式：单字节无大小端，0=黑/255=白</label>
+                                </div>
+                                <div class="p-2 bg-blue-50 rounded border border-blue-100 text-xs text-blue-700">
+                                    <p>输出规则：正常点=0x0000，坏点=0x1000</p>
+                                    <p id="outputFormatHint" class="mt-1">当前：大端序 · 行优先 · 640×512 · 655,360字节</p>
                                 </div>
                             </div>
                         </div>
@@ -132,7 +147,7 @@
                 </div>
 
                 <!-- 手动标记面板 -->
-                <div class="control-panel">
+                <div class="control-panel order-3">
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">手动标记</h2>
                     <div class="space-y-3">
                         <button id="startMarkingButton" class="btn-secondary w-full" disabled>
@@ -148,7 +163,7 @@
                 </div>
 
                 <!-- 坏点检测参数面板 -->
-                <div class="control-panel">
+                <div class="control-panel order-2">
                     <h2 class="text-lg font-semibold mb-3 text-dark border-b pb-2">检测参数</h2>
                     <div class="space-y-4">
                         <div>
@@ -173,17 +188,21 @@
                         <button id="detectButton" class="btn-primary w-full" disabled>
                             <i class="fa fa-magic"></i> 自动检测坏点
                         </button>
+                        <button id="cancelDetectButton" class="btn-danger w-full hidden">
+                            <i class="fa fa-stop"></i> 取消检测
+                        </button>
+                        <p id="detectionStatus" class="text-xs text-gray-500">检测将在后台运行，页面可继续响应。</p>
                     </div>
                 </div>
             </div>
 
             <div class="lg:col-span-3 space-y-4">
-                <div class="canvas-container" style="height: 600px;">
+                <div class="canvas-container" style="height: clamp(420px, 65vh, 700px);">
                     <canvas id="imageCanvas" class="w-full h-full"></canvas>
                     <div id="loadingIndicator" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
                         <div class="bg-white p-4 rounded-lg flex items-center gap-3">
                             <i class="fa fa-circle-o-notch fa-spin text-primary text-xl"></i>
-                            <span>加载原始图像中...</span>
+                            <span id="loadingText">加载原始图像中...</span>
                         </div>
                     </div>
                     <div id="noImageHint" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
@@ -243,6 +262,15 @@
         let rowMajorOrder = true;      // 是否行优先存储
         let littleEndian = false;      // 新增：字节序（为了匹配16bit保存规则）
         let imageStats = { min: 0, max: 0, p1: 0, p99: 0 }; // 图像统计信息
+        const SUPPORTED_RESOLUTIONS = [
+            { width: 384, height: 288 },
+            { width: 640, height: 512 },
+            { width: 1280, height: 1024 }
+        ];
+        const MAX_LIST_ITEMS = 500;
+        let imageVersion = 0;
+        let detectionWorker = null;
+        let isDetecting = false;
 
         // 画布相关变量
         const canvas = document.getElementById('imageCanvas');
@@ -261,8 +289,8 @@
         let selectedY = -1;            // 选中的像素Y坐标
 
         // 【新增：坏点标记核心变量】完全遵循原坏点检测工具规则
-        let autoBadPoints = new Set(); // 自动检测坏点 Set<"y,x">
-        let manualBadPoints = new Set();// 手动标记坏点 Set<"y,x">
+        let autoBadPoints = new Set(); // 自动检测坏点 Set<逻辑行优先像素索引>
+        let manualBadPoints = new Set();// 手动标记坏点 Set<逻辑行优先像素索引>
         let isMarkingMode = false;     // 是否处于坏点标记模式
         let currentMarkX = 0;          // 标记模式十字准星X
         let currentMarkY = 0;          // 标记模式十字准星Y
@@ -271,12 +299,15 @@
         // 【DOM元素】原有元素 + 新增坏点相关元素
         const fileInput = document.getElementById('fileInput');
         const fileName = document.getElementById('fileName');
+        const fileSizeStatus = document.getElementById('fileSizeStatus');
         const widthInput = document.getElementById('widthInput');
         const heightInput = document.getElementById('heightInput');
         const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
         const littleEndianCheckbox = document.getElementById('littleEndian');
+        const outputFormatHint = document.getElementById('outputFormatHint');
         const noImageHint = document.getElementById('noImageHint');
         const loadingIndicator = document.getElementById('loadingIndicator');
+        const loadingText = document.getElementById('loadingText');
         const currentXEl = document.getElementById('currentX');
         const currentYEl = document.getElementById('currentY');
         const currentValueEl = document.getElementById('currentValue');
@@ -290,6 +321,8 @@
         // 新增坏点相关DOM
         const markModeIndicator = document.getElementById('markModeIndicator');
         const detectButton = document.getElementById('detectButton');
+        const cancelDetectButton = document.getElementById('cancelDetectButton');
+        const detectionStatus = document.getElementById('detectionStatus');
         const startMarkingButton = document.getElementById('startMarkingButton');
         const clearManualButton = document.getElementById('clearManualButton');
         const saveBadMaskButton = document.getElementById('saveBadMaskButton');
@@ -308,6 +341,8 @@
         function init() {
             resizeCanvas();
             setupEventListeners();
+            updateOutputFormatHint();
+            updateExpectedFileSize();
             // 初始隐藏所有模式提示
             viewModeIndicator.classList.add('hidden');
             markModeIndicator.classList.add('hidden');
@@ -318,16 +353,27 @@
             // 原有事件
             window.addEventListener('resize', resizeCanvas);
             rowMajorOrderCheckbox.addEventListener('change', (e) => {
+                if (hasBadPointChanges() && !confirm('切换存储顺序会清空当前坏点检测和手动标记，是否继续？')) {
+                    e.target.checked = rowMajorOrder;
+                    return;
+                }
                 rowMajorOrder = e.target.checked;
+                updateOutputFormatHint();
                 if (originalData) reloadImageData();
             });
             // 新增：字节序切换事件
             littleEndianCheckbox.addEventListener('change', (e) => {
                 littleEndian = e.target.checked;
+                updateOutputFormatHint();
             });
             size640512.addEventListener('click', () => { setImageSize(640, 512, size640512) });
             size384288.addEventListener('click', () => { setImageSize(384, 288, size384288) });
             size12801024.addEventListener('click', () => { setImageSize(1280, 1024, size12801024) });
+            fileInput.addEventListener('click', (e) => {
+                if (hasBadPointChanges() && !confirm('加载新文件会清空当前坏点检测和手动标记，是否继续？')) {
+                    e.preventDefault();
+                }
+            });
             fileInput.addEventListener('change', handleFileSelect);
             setupCanvasEvents();
             window.addEventListener('keydown', handleKeyDown);
@@ -354,13 +400,19 @@
             });
             // 新增：坏点操作按钮事件
             detectButton.addEventListener('click', detectBadPoints);
+            cancelDetectButton.addEventListener('click', cancelDetection);
             startMarkingButton.addEventListener('click', toggleMarkingMode);
             clearManualButton.addEventListener('click', clearManualMarkings);
             saveBadMaskButton.addEventListener('click', saveBadMask);
         }
 
         // 原有分辨率设置函数
-        function setImageSize(w, h, activeBtn) {
+        function setImageSize(w, h, activeBtn, reload = true) {
+            if ((w !== width || h !== height) && hasBadPointChanges() &&
+                !confirm('切换分辨率会清空当前坏点检测和手动标记，是否继续？')) {
+                return;
+            }
+            if (isDetecting) cancelDetection();
             widthInput.value = w;
             heightInput.value = h;
             width = w;
@@ -369,7 +421,111 @@
                 btn.className = 'btn-short flex-1';
             });
             activeBtn.className = 'btn-short flex-1 btn-short-active';
-            if (originalData) reloadImageData();
+            updateExpectedFileSize();
+            updateOutputFormatHint();
+            if (reload && originalData) reloadImageData();
+        }
+
+        function formatBytes(bytes) {
+            return `${bytes.toLocaleString('zh-CN')}字节`;
+        }
+
+        function getExpectedInputBytes() {
+            return width * height;
+        }
+
+        function getExpectedOutputBytes() {
+            return width * height * 2;
+        }
+
+        function detectResolutionFromSize(byteLength) {
+            return SUPPORTED_RESOLUTIONS.find(item => item.width * item.height === byteLength) || null;
+        }
+
+        function getResolutionButton(w, h) {
+            if (w === 384 && h === 288) return size384288;
+            if (w === 1280 && h === 1024) return size12801024;
+            return size640512;
+        }
+
+        function updateExpectedFileSize() {
+            const expected = getExpectedInputBytes();
+            if (!originalData) {
+                fileSizeStatus.textContent = `期望Y8文件：${formatBytes(expected)}`;
+                fileSizeStatus.className = 'text-xs mt-1 text-gray-500';
+                return;
+            }
+            const matches = originalData.byteLength === expected;
+            fileSizeStatus.textContent = matches
+                ? `尺寸校验通过：${formatBytes(originalData.byteLength)}`
+                : `尺寸不匹配：文件${formatBytes(originalData.byteLength)}，当前分辨率需要${formatBytes(expected)}`;
+            fileSizeStatus.className = `text-xs mt-1 ${matches ? 'text-green-600' : 'text-red-600'}`;
+        }
+
+        function updateOutputFormatHint() {
+            outputFormatHint.textContent =
+                `当前：${littleEndian ? '小端序' : '大端序'} · ${rowMajorOrder ? '行优先' : '列优先'} · ` +
+                `${width}×${height} · ${formatBytes(getExpectedOutputBytes())}`;
+        }
+
+        function hasBadPointChanges() {
+            return autoBadPoints.size > 0 || manualBadPoints.size > 0;
+        }
+
+        function pointToIndex(x, y) {
+            return y * width + x;
+        }
+
+        function indexToPoint(index) {
+            return { x: index % width, y: Math.floor(index / width) };
+        }
+
+        function resetInteractionState() {
+            isPixelSelected = false;
+            keyboardNavMode = false;
+            selectedX = -1;
+            selectedY = -1;
+            isMarkingMode = false;
+            currentMarkX = 0;
+            currentMarkY = 0;
+            keyboardNavHint.classList.add('hidden');
+            pixelSelectHint.classList.add('hidden');
+            markModeIndicator.classList.add('hidden');
+            viewModeIndicator.classList.toggle('hidden', !imageData);
+            startMarkingButton.innerHTML = '<i class="fa fa-mouse-pointer"></i> 开始手动标记';
+            startMarkingButton.className = 'btn-secondary w-full';
+        }
+
+        function clearBadPointState() {
+            autoBadPoints.clear();
+            manualBadPoints.clear();
+            updateBadCount();
+            updateBadPointList();
+        }
+
+        function setToolButtonsEnabled(enabled) {
+            detectButton.disabled = !enabled;
+            startMarkingButton.disabled = !enabled;
+            clearManualButton.disabled = !enabled;
+            saveBadMaskButton.disabled = !enabled;
+        }
+
+        function clearLoadedImage(message = '请加载Y8格式原始图像文件') {
+            imageVersion++;
+            if (imageBitmap) {
+                imageBitmap.close();
+                imageBitmap = null;
+            }
+            imageData = null;
+            clearBadPointState();
+            resetInteractionState();
+            setToolButtonsEnabled(false);
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            noImageHint.classList.remove('hidden');
+            noImageHint.querySelector('p').textContent = message;
+            currentXEl.textContent = '-';
+            currentYEl.textContent = '-';
+            currentValueEl.textContent = '-';
         }
 
         // 原有画布大小调整
@@ -457,7 +613,7 @@
                     break;
                 case ' ':
                     e.preventDefault(); // 空格标记/取消
-                    const point = `${currentMarkY},${currentMarkX}`;
+                    const point = pointToIndex(currentMarkX, currentMarkY);
                     manualBadPoints.has(point) ? manualBadPoints.delete(point) : manualBadPoints.add(point);
                     updateBadCount();
                     updateBadPointList();
@@ -503,11 +659,16 @@
             ctx.scale(scale, scale);
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(imageBitmap, 0, 0);
+            const visibleMinX = Math.max(0, Math.floor(-offsetX / scale) - 3);
+            const visibleMinY = Math.max(0, Math.floor(-offsetY / scale) - 3);
+            const visibleMaxX = Math.min(width - 1, Math.ceil((canvas.width - offsetX) / scale) + 3);
+            const visibleMaxY = Math.min(height - 1, Math.ceil((canvas.height - offsetY) / scale) + 3);
 
             // 1. 绘制自动坏点：红色半透明小圆（与原工具一致）
             ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-            autoBadPoints.forEach(point => {
-                const [y, x] = point.split(',').map(Number);
+            autoBadPoints.forEach(index => {
+                const { x, y } = indexToPoint(index);
+                if (x < visibleMinX || x > visibleMaxX || y < visibleMinY || y > visibleMaxY) return;
                 ctx.beginPath();
                 ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
                 ctx.fill();
@@ -515,8 +676,9 @@
 
             // 2. 绘制手动坏点：纯蓝色小圆（与原工具一致）
             ctx.fillStyle = 'rgba(0, 204, 255, 1)';
-            manualBadPoints.forEach(point => {
-                const [y, x] = point.split(',').map(Number);
+            manualBadPoints.forEach(index => {
+                const { x, y } = indexToPoint(index);
+                if (x < visibleMinX || x > visibleMaxX || y < visibleMinY || y > visibleMaxY) return;
                 ctx.beginPath();
                 ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
                 ctx.fill();
@@ -557,59 +719,121 @@
             ctx.restore();
         }
 
-        // 【核心新增】坏点自动检测：适配Y8 8bit灰度（仅改数据类型，逻辑与原工具完全一致）
-        function detectBadPoints() {
-            if (!imageData) return;
-            showLoading();
-            detectButton.disabled = true;
-            try {
-                const neighborhoodSize = parseInt(neighborhoodSelect.value);
-                const halfNeighborhood = Math.floor(neighborhoodSize / 2);
-                const badPoints = new Set();
+        // 在Web Worker中执行原有判定规则，避免大分辨率检测阻塞页面。
+        function createDetectionWorker() {
+            const workerSource = `
+                self.onmessage = event => {
+                    const { buffer, width, height, rowMajorOrder, threshold, neighborhoodSize } = event.data;
+                    const pixels = new Uint8Array(buffer);
+                    const halfNeighborhood = Math.floor(neighborhoodSize / 2);
+                    const badIndices = [];
 
-                // 遍历所有像素（Y8为Uint8Array，直接取灰度值）
-                for (let y = 0; y < height; y++) {
-                    for (let x = 0; x < width; x++) {
-                        const centerIndex = rowMajorOrder ? (y * width + x) : (x * height + y);
-                        const centerValue = imageData[centerIndex]; // 8bit灰度值
-                        let aboveThresholdCount = 0;
-                        let validNeighbors = 0;
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const centerIndex = rowMajorOrder ? (y * width + x) : (x * height + y);
+                            const centerValue = pixels[centerIndex];
+                            let aboveThresholdCount = 0;
+                            let validNeighbors = 0;
 
-                        // 遍历邻域
-                        for (let ny = -halfNeighborhood; ny <= halfNeighborhood; ny++) {
-                            for (let nx = -halfNeighborhood; nx <= halfNeighborhood; nx++) {
-                                if (nx === 0 && ny === 0) continue;
-                                const neighborX = x + nx;
-                                const neighborY = y + ny;
-                                if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height) {
-                                    const neighborIndex = rowMajorOrder ? (neighborY * width + neighborX) : (neighborX * height + neighborY);
-                                    const neighborValue = imageData[neighborIndex];
-                                    if (Math.abs(centerValue - neighborValue) > threshold) {
+                            for (let ny = -halfNeighborhood; ny <= halfNeighborhood; ny++) {
+                                for (let nx = -halfNeighborhood; nx <= halfNeighborhood; nx++) {
+                                    if (nx === 0 && ny === 0) continue;
+                                    const neighborX = x + nx;
+                                    const neighborY = y + ny;
+                                    if (neighborX < 0 || neighborX >= width || neighborY < 0 || neighborY >= height) continue;
+                                    const neighborIndex = rowMajorOrder
+                                        ? (neighborY * width + neighborX)
+                                        : (neighborX * height + neighborY);
+                                    if (Math.abs(centerValue - pixels[neighborIndex]) > threshold) {
                                         aboveThresholdCount++;
                                     }
                                     validNeighbors++;
                                 }
                             }
+
+                            if (validNeighbors > 0 && aboveThresholdCount > validNeighbors / 2) {
+                                badIndices.push(y * width + x);
+                            }
                         }
 
-                        // 判定坏点：超阈值数＞有效邻域数的1/2
-                        if (validNeighbors > 0 && aboveThresholdCount > validNeighbors / 2) {
-                            badPoints.add(`${y},${x}`);
+                        if (y % 32 === 0) {
+                            self.postMessage({ type: 'progress', value: Math.round((y + 1) * 100 / height) });
                         }
                     }
+
+                    const result = Uint32Array.from(badIndices);
+                    self.postMessage({ type: 'done', buffer: result.buffer }, [result.buffer]);
+                };
+            `;
+            const blob = new Blob([workerSource], { type: 'text/javascript' });
+            const workerUrl = URL.createObjectURL(blob);
+            const worker = new Worker(workerUrl);
+            URL.revokeObjectURL(workerUrl);
+            return worker;
+        }
+
+        function finishDetection(message, isError = false) {
+            if (detectionWorker) {
+                detectionWorker.terminate();
+                detectionWorker = null;
+            }
+            isDetecting = false;
+            detectButton.disabled = !imageData;
+            cancelDetectButton.classList.add('hidden');
+            detectionStatus.textContent = message;
+            detectionStatus.className = `text-xs ${isError ? 'text-red-600' : 'text-gray-500'}`;
+            hideLoading();
+        }
+
+        function cancelDetection() {
+            if (!isDetecting) return;
+            finishDetection('检测已取消，可调整参数后重新检测。');
+        }
+
+        function detectBadPoints() {
+            if (!imageData || isDetecting) return;
+
+            const neighborhoodSize = parseInt(neighborhoodSelect.value);
+            const workerPixels = imageData.slice();
+            detectionWorker = createDetectionWorker();
+            isDetecting = true;
+            detectButton.disabled = true;
+            cancelDetectButton.classList.remove('hidden');
+            detectionStatus.textContent = '正在检测：0%';
+            detectionStatus.className = 'text-xs text-primary';
+            showLoading('正在检测坏点：0%');
+
+            detectionWorker.onmessage = event => {
+                if (event.data.type === 'progress') {
+                    const progress = Math.min(99, event.data.value);
+                    detectionStatus.textContent = `正在检测：${progress}%`;
+                    loadingText.textContent = `正在检测坏点：${progress}%`;
+                    return;
                 }
 
-                autoBadPoints = badPoints;
-                updateBadCount();
-                updateBadPointList();
-                drawCanvas();
-            } catch (error) {
+                if (event.data.type === 'done') {
+                    autoBadPoints = new Set(new Uint32Array(event.data.buffer));
+                    updateBadCount();
+                    updateBadPointList();
+                    drawCanvas();
+                    finishDetection(`检测完成：自动发现 ${autoBadPoints.size.toLocaleString('zh-CN')} 个坏点。`);
+                }
+            };
+
+            detectionWorker.onerror = error => {
                 console.error('检测坏点失败:', error);
+                finishDetection('检测失败，请检查文件和参数。', true);
                 alert('检测坏点失败: ' + error.message);
-            } finally {
-                detectButton.disabled = false;
-                hideLoading();
-            }
+            };
+
+            detectionWorker.postMessage({
+                buffer: workerPixels.buffer,
+                width,
+                height,
+                rowMajorOrder,
+                threshold,
+                neighborhoodSize
+            }, [workerPixels.buffer]);
         }
 
         // 【核心新增】标记模式切换：与原工具交互一致，UI联动
@@ -672,8 +896,8 @@
                 const allBadPoints = new Set([...autoBadPoints, ...manualBadPoints]);
 
                 // 赋值：坏点=0x1000，正常=0
-                allBadPoints.forEach(point => {
-                    const [y, x] = point.split(',').map(Number);
+                allBadPoints.forEach(pointIndex => {
+                    const { x, y } = indexToPoint(pointIndex);
                     const index = rowMajorOrder ? (y * width + x) : (x * height + y);
                     badFlagData[index] = 0x1000;
                 });
@@ -698,15 +922,18 @@
                 const a = document.createElement('a');
                 let downloadName = 'y8_bad_points.bin';
                 if (fileInput.files[0]) {
-                    downloadName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + "_bad.bin";
+                    const baseName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
+                    const endianTag = littleEndian ? 'LE' : 'BE';
+                    const orderTag = rowMajorOrder ? 'ROW' : 'COL';
+                    downloadName = `${baseName}_bad_${width}x${height}_${endianTag}_${orderTag}.bin`;
                 }
                 a.href = url;
                 a.download = downloadName;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                alert('16bit坏点掩码保存成功！');
+                window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+                alert(`16bit坏点掩码保存成功！\n${downloadName}\n${formatBytes(totalBytes)}`);
             } catch (error) {
                 console.error('保存坏点掩码失败:', error);
                 alert('保存失败: ' + error.message);
@@ -719,7 +946,7 @@
         function updateBadCount() {
             const autoCount = autoBadPoints.size;
             const manualCount = manualBadPoints.size;
-            const totalCount = autoCount + manualCount;
+            const totalCount = new Set([...autoBadPoints, ...manualBadPoints]).size;
             const totalPixels = width * height;
             const percentage = totalPixels > 0 ? (totalCount / totalPixels * 100).toFixed(6) : '0.0000';
 
@@ -731,42 +958,37 @@
 
         // 新增：更新坏点列表（点击坐标跳转放大，与原工具一致）
         function updateBadPointList() {
-            // 自动坏点：红色，手动坏点：蓝色，按坐标排序
-            const autoList = Array.from(autoBadPoints)
-                .sort((a, b) => {
-                    const [ya, xa] = a.split(',').map(Number);
-                    const [yb, xb] = b.split(',').map(Number);
-                    return ya - yb || xa - xb;
-                })
-                .map(point => {
-                    const [y, x] = point.split(',').map(Number);
-                    return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-red-400">(${x}, ${y})</span> <span class="text-red-300 text-xs">自动</span></div>`;
-                });
-
-            const manualList = Array.from(manualBadPoints)
-                .sort((a, b) => {
-                    const [ya, xa] = a.split(',').map(Number);
-                    const [yb, xb] = b.split(',').map(Number);
-                    return ya - yb || xa - xb;
-                })
-                .map(point => {
-                    const [y, x] = point.split(',').map(Number);
-                    return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-blue-400">(${x}, ${y})</span> <span class="text-blue-300 text-xs">手动</span></div>`;
-                });
-
-            const allPoints = [...autoList, ...manualList];
-
-            if (allPoints.length === 0) {
+            const uniqueCount = new Set([...autoBadPoints, ...manualBadPoints]).size;
+            if (uniqueCount === 0) {
                 badPointListPanel.innerHTML = `
                     <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
                     <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
                 `;
-            } else {
-                badPointListPanel.innerHTML = `
-                    <p class="font-medium mb-1 text-green-400">📌 坏点列表（共 ${allPoints.length} 个，点击坐标可跳转放大）：</p>
-                    <div class="flex flex-col gap-1 mt-1">${allPoints.join('')}</div>
-                `;
+                return;
             }
+
+            const visibleIndices = [];
+            for (let index = 0; index < width * height && visibleIndices.length < MAX_LIST_ITEMS; index++) {
+                if (autoBadPoints.has(index) || manualBadPoints.has(index)) visibleIndices.push(index);
+            }
+
+            const pointRows = visibleIndices.map(index => {
+                const { x, y } = indexToPoint(index);
+                const isAuto = autoBadPoints.has(index);
+                const isManual = manualBadPoints.has(index);
+                const colorClass = isAuto && isManual ? 'text-yellow-300' : (isAuto ? 'text-red-400' : 'text-blue-400');
+                const typeText = isAuto && isManual ? '自动+手动' : (isAuto ? '自动' : '手动');
+                return `<button type="button" class="w-full text-left cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="${colorClass}">(${x}, ${y})</span> <span class="text-gray-300 text-xs">${typeText}</span></button>`;
+            });
+
+            const limitedHint = uniqueCount > MAX_LIST_ITEMS
+                ? `<p class="text-yellow-300 text-xs mt-1">为保持流畅，仅显示前 ${MAX_LIST_ITEMS} 个；保存文件仍包含全部坏点。</p>`
+                : '';
+            badPointListPanel.innerHTML = `
+                <p class="font-medium mb-1 text-green-400">📌 坏点列表（去重后 ${uniqueCount.toLocaleString('zh-CN')} 个，点击坐标可跳转）：</p>
+                ${limitedHint}
+                <div class="flex flex-col gap-1 mt-1">${pointRows.join('')}</div>
+            `;
         }
 
         // 新增：点击坏点坐标跳转并放大8倍
@@ -904,31 +1126,41 @@
             drawCanvas();
         }
 
-        // 原有重新加载图像
-        function reloadImageData() {
+        async function reloadImageData() {
             if (!originalData) return;
-            showLoading();
+            if (isDetecting) cancelDetection();
+            showLoading('正在校验并加载Y8图像...');
+            const expectedBytes = getExpectedInputBytes();
+            updateExpectedFileSize();
+
             try {
-                const totalPixels = width * height;
-                const byteView = new Uint8Array(originalData);
-                if (byteView.length < totalPixels) {
-                    throw new Error(`数据不足：需要 ${totalPixels} 字节，文件仅${byteView.length}字节`);
+                if (originalData.byteLength !== expectedBytes) {
+                    clearLoadedImage('文件大小与当前分辨率不匹配');
+                    throw new Error(
+                        `尺寸不匹配：${width}×${height}的Y8文件必须为${formatBytes(expectedBytes)}，` +
+                        `当前文件为${formatBytes(originalData.byteLength)}`
+                    );
                 }
-                imageData = new Uint8Array(totalPixels);
-                for (let i = 0; i < totalPixels; i++) {
-                    imageData[i] = byteView[i];
-                }
+
+                const currentVersion = ++imageVersion;
+                imageData = new Uint8Array(originalData).slice();
                 calculateImageStats();
-                createOriginalImageBitmap();
+                const bitmapReady = await createOriginalImageBitmap(currentVersion);
+                if (!bitmapReady || currentVersion !== imageVersion) return;
+
+                clearBadPointState();
+                resetInteractionState();
                 resetView();
-                // 重置坏点
-                autoBadPoints.clear();
-                manualBadPoints.clear();
-                updateBadCount();
-                updateBadPointList();
-                hideLoading();
+                noImageHint.classList.add('hidden');
+                viewModeIndicator.classList.remove('hidden');
+                setToolButtonsEnabled(true);
+                detectionStatus.textContent = '图像已就绪，可开始自动检测。';
+                detectionStatus.className = 'text-xs text-gray-500';
             } catch (error) {
                 console.error('重新加载图像失败:', error);
+                setToolButtonsEnabled(false);
+                alert(error.message);
+            } finally {
                 hideLoading();
             }
         }
@@ -937,41 +1169,37 @@
         async function handleFileSelect(e) {
             const file = e.target.files[0];
             if (!file) return;
-            showLoading();
+            if (isDetecting) cancelDetection();
+            showLoading('正在读取Y8文件...');
             fileName.textContent = file.name;
             viewModeIndicator.classList.add('hidden');
             try {
                 const arrayBuffer = await readFileAsync(file);
+                const detectedResolution = detectResolutionFromSize(arrayBuffer.byteLength);
+                if (!detectedResolution) {
+                    originalData = null;
+                    clearLoadedImage('无法识别该Y8文件的分辨率');
+                    fileSizeStatus.textContent =
+                        `不支持的文件大小：${formatBytes(arrayBuffer.byteLength)}；仅支持384×288、640×512、1280×1024`;
+                    fileSizeStatus.className = 'text-xs mt-1 text-red-600';
+                    throw new Error(
+                        `无法根据文件大小识别分辨率：${formatBytes(arrayBuffer.byteLength)}。` +
+                        '仅支持384×288、640×512、1280×1024的Y8文件。'
+                    );
+                }
+
+                setImageSize(
+                    detectedResolution.width,
+                    detectedResolution.height,
+                    getResolutionButton(detectedResolution.width, detectedResolution.height),
+                    false
+                );
                 originalData = arrayBuffer;
-                width = parseInt(widthInput.value);
-                height = parseInt(heightInput.value);
-                const totalPixels = width * height;
-                const byteView = new Uint8Array(originalData);
-                if (byteView.length < totalPixels) {
-                    throw new Error(`Y8文件数据不足！宽×高=${width}×${height}=${totalPixels}像素，文件仅${byteView.length}字节`);
-                }
-                imageData = new Uint8Array(totalPixels);
-                for (let i = 0; i < totalPixels; i++) {
-                    imageData[i] = byteView[i];
-                }
-                calculateImageStats();
-                createOriginalImageBitmap();
-                resetView();
-                noImageHint.classList.add('hidden');
-                viewModeIndicator.classList.remove('hidden');
-                // 启用坏点操作按钮
-                detectButton.disabled = false;
-                startMarkingButton.disabled = false;
-                clearManualButton.disabled = false;
-                saveBadMaskButton.disabled = false;
-                // 重置坏点
-                autoBadPoints.clear();
-                manualBadPoints.clear();
-                updateBadCount();
-                updateBadPointList();
+                updateExpectedFileSize();
+                await reloadImageData();
             } catch (error) {
                 console.error('加载Y8文件失败:', error);
-                alert('加载文件失败: ' + error.message);
+                if (!originalData) alert('加载文件失败: ' + error.message);
             } finally {
                 hideLoading();
             }
@@ -980,12 +1208,31 @@
         // 原有图像统计计算
         function calculateImageStats() {
             if (!imageData) return;
-            const sortedValues = new Uint8Array(imageData);
-            sortedValues.sort();
-            const minValue = sortedValues[0];
-            const maxValue = sortedValues[sortedValues.length - 1];
-            const p1 = sortedValues[Math.floor(sortedValues.length * 0.01)];
-            const p99 = sortedValues[Math.floor(sortedValues.length * 0.99)];
+            const histogram = new Uint32Array(256);
+            for (let i = 0; i < imageData.length; i++) histogram[imageData[i]]++;
+
+            let minValue = 0;
+            while (minValue < 255 && histogram[minValue] === 0) minValue++;
+            let maxValue = 255;
+            while (maxValue > 0 && histogram[maxValue] === 0) maxValue--;
+
+            const p1Target = Math.floor(imageData.length * 0.01);
+            const p99Target = Math.floor(imageData.length * 0.99);
+            let cumulative = 0;
+            let p1 = minValue;
+            let p99 = maxValue;
+            let p1Found = false;
+            for (let value = 0; value < histogram.length; value++) {
+                cumulative += histogram[value];
+                if (!p1Found && cumulative > p1Target) {
+                    p1 = value;
+                    p1Found = true;
+                }
+                if (cumulative > p99Target) {
+                    p99 = value;
+                    break;
+                }
+            }
             imageStats = { min: minValue, max: maxValue, p1: p1, p99: p99 };
             debugPanel.innerHTML = `
                 <p class="font-medium mb-1">图像统计 (${width}×${height} | Y8原始8bit灰度):</p>
@@ -996,8 +1243,8 @@
         }
 
         // 原有Y8图像转ImageBitmap
-        function createOriginalImageBitmap() {
-            if (!imageData) return;
+        async function createOriginalImageBitmap(version) {
+            if (!imageData) return false;
             const rgbaData = new Uint8ClampedArray(width * height * 4);
             for (let y = 0; y < height; y++) {
                 for (let x = 0; x < width; x++) {
@@ -1011,10 +1258,14 @@
                 }
             }
             const imageDataObj = new ImageData(rgbaData, width, height);
-            createImageBitmap(imageDataObj).then(bitmap => {
-                imageBitmap = bitmap;
-                drawCanvas();
-            });
+            const bitmap = await createImageBitmap(imageDataObj);
+            if (version !== imageVersion) {
+                bitmap.close();
+                return false;
+            }
+            if (imageBitmap) imageBitmap.close();
+            imageBitmap = bitmap;
+            return true;
         }
 
         // 原有视图重置
@@ -1028,7 +1279,10 @@
         }
 
         // 原有工具函数
-        function showLoading() { loadingIndicator.classList.remove('hidden'); }
+        function showLoading(message = '加载原始图像中...') {
+            loadingText.textContent = message;
+            loadingIndicator.classList.remove('hidden');
+        }
         function hideLoading() { loadingIndicator.classList.add('hidden'); }
         function readFileAsync(file) {
             return new Promise((resolve, reject) => {
