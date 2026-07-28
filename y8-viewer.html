@@ -33,6 +33,9 @@
             .canvas-container {
                 @apply relative border border-gray-300 rounded-lg overflow-hidden bg-gray-100;
             }
+            .canvas-container.drop-zone-active {
+                @apply border-primary ring-4 ring-primary/20 bg-blue-50;
+            }
             .control-panel {
                 @apply bg-white p-4 rounded-lg shadow-md;
             }
@@ -197,7 +200,7 @@
             </div>
 
             <div class="lg:col-span-3 space-y-4">
-                <div class="canvas-container" style="height: clamp(420px, 65vh, 700px);">
+                <div id="canvasDropZone" class="canvas-container" style="height: clamp(420px, 65vh, 700px);">
                     <canvas id="imageCanvas" class="w-full h-full"></canvas>
                     <div id="loadingIndicator" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
                         <div class="bg-white p-4 rounded-lg flex items-center gap-3">
@@ -205,9 +208,15 @@
                             <span id="loadingText">加载原始图像中...</span>
                         </div>
                     </div>
-                    <div id="noImageHint" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
+                    <div id="noImageHint" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 pointer-events-none">
                         <i class="fa fa-picture-o text-5xl mb-3"></i>
                         <p>请加载Y8格式原始图像文件</p>
+                        <p class="text-sm mt-2">也可以将文件拖拽到此区域</p>
+                    </div>
+                    <div id="dropOverlay" class="absolute inset-0 hidden flex-col items-center justify-center bg-blue-50/95 text-primary pointer-events-none z-20">
+                        <i class="fa fa-cloud-upload text-6xl mb-4"></i>
+                        <p class="text-xl font-semibold">释放鼠标以加载Y8文件</p>
+                        <p class="text-sm mt-2">自动识别384×288、640×512、1280×1024</p>
                     </div>
                     <!-- 模式提示：互斥显示 -->
                     <div class="view-mode-hint hidden" id="viewModeIndicator">
@@ -271,6 +280,8 @@
         let imageVersion = 0;
         let detectionWorker = null;
         let isDetecting = false;
+        let loadedFileName = null;
+        let dragDepth = 0;
 
         // 画布相关变量
         const canvas = document.getElementById('imageCanvas');
@@ -306,6 +317,8 @@
         const littleEndianCheckbox = document.getElementById('littleEndian');
         const outputFormatHint = document.getElementById('outputFormatHint');
         const noImageHint = document.getElementById('noImageHint');
+        const canvasDropZone = document.getElementById('canvasDropZone');
+        const dropOverlay = document.getElementById('dropOverlay');
         const loadingIndicator = document.getElementById('loadingIndicator');
         const loadingText = document.getElementById('loadingText');
         const currentXEl = document.getElementById('currentX');
@@ -369,12 +382,8 @@
             size640512.addEventListener('click', () => { setImageSize(640, 512, size640512) });
             size384288.addEventListener('click', () => { setImageSize(384, 288, size384288) });
             size12801024.addEventListener('click', () => { setImageSize(1280, 1024, size12801024) });
-            fileInput.addEventListener('click', (e) => {
-                if (hasBadPointChanges() && !confirm('加载新文件会清空当前坏点检测和手动标记，是否继续？')) {
-                    e.preventDefault();
-                }
-            });
             fileInput.addEventListener('change', handleFileSelect);
+            setupDragAndDrop();
             setupCanvasEvents();
             window.addEventListener('keydown', handleKeyDown);
 
@@ -404,6 +413,56 @@
             startMarkingButton.addEventListener('click', toggleMarkingMode);
             clearManualButton.addEventListener('click', clearManualMarkings);
             saveBadMaskButton.addEventListener('click', saveBadMask);
+        }
+
+        function isFileDrag(event) {
+            return Array.from(event.dataTransfer?.types || []).includes('Files');
+        }
+
+        function setDropZoneActive(active) {
+            canvasDropZone.classList.toggle('drop-zone-active', active);
+            dropOverlay.classList.toggle('hidden', !active);
+            dropOverlay.classList.toggle('flex', active);
+        }
+
+        function setupDragAndDrop() {
+            canvasDropZone.addEventListener('dragenter', event => {
+                if (!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth++;
+                setDropZoneActive(true);
+            });
+
+            canvasDropZone.addEventListener('dragover', event => {
+                if (!isFileDrag(event)) return;
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'copy';
+            });
+
+            canvasDropZone.addEventListener('dragleave', event => {
+                if (!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth = Math.max(0, dragDepth - 1);
+                if (dragDepth === 0) setDropZoneActive(false);
+            });
+
+            canvasDropZone.addEventListener('drop', event => {
+                if (!isFileDrag(event)) return;
+                event.preventDefault();
+                dragDepth = 0;
+                setDropZoneActive(false);
+                const files = event.dataTransfer.files;
+                if (!files || files.length === 0) return;
+                if (files.length > 1) {
+                    alert('一次只能加载一个Y8文件，将使用拖入的第一个文件。');
+                }
+                loadY8File(files[0], 'drop');
+            });
+
+            window.addEventListener('dragend', () => {
+                dragDepth = 0;
+                setDropZoneActive(false);
+            });
         }
 
         // 原有分辨率设置函数
@@ -921,8 +980,8 @@
                 const url = URL.createObjectURL(blob);
                 const a = document.createElement('a');
                 let downloadName = 'y8_bad_points.bin';
-                if (fileInput.files[0]) {
-                    const baseName = fileInput.files[0].name.replace(/\.[^/.]+$/, "");
+                if (loadedFileName) {
+                    const baseName = loadedFileName.replace(/\.[^/.]+$/, "");
                     const endianTag = littleEndian ? 'LE' : 'BE';
                     const orderTag = rowMajorOrder ? 'ROW' : 'COL';
                     downloadName = `${baseName}_bad_${width}x${height}_${endianTag}_${orderTag}.bin`;
@@ -1165,10 +1224,13 @@
             }
         }
 
-        // 原有文件选择处理
-        async function handleFileSelect(e) {
-            const file = e.target.files[0];
+        async function loadY8File(file, source = 'picker') {
             if (!file) return;
+            if (hasBadPointChanges() &&
+                !confirm(`加载新文件“${file.name}”会清空当前坏点检测和手动标记，是否继续？`)) {
+                if (source === 'picker') fileInput.value = '';
+                return false;
+            }
             if (isDetecting) cancelDetection();
             showLoading('正在读取Y8文件...');
             fileName.textContent = file.name;
@@ -1178,6 +1240,7 @@
                 const detectedResolution = detectResolutionFromSize(arrayBuffer.byteLength);
                 if (!detectedResolution) {
                     originalData = null;
+                    loadedFileName = null;
                     clearLoadedImage('无法识别该Y8文件的分辨率');
                     fileSizeStatus.textContent =
                         `不支持的文件大小：${formatBytes(arrayBuffer.byteLength)}；仅支持384×288、640×512、1280×1024`;
@@ -1195,14 +1258,23 @@
                     false
                 );
                 originalData = arrayBuffer;
+                loadedFileName = file.name;
                 updateExpectedFileSize();
                 await reloadImageData();
+                return true;
             } catch (error) {
                 console.error('加载Y8文件失败:', error);
                 if (!originalData) alert('加载文件失败: ' + error.message);
+                return false;
             } finally {
                 hideLoading();
             }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            loadY8File(file, 'picker');
         }
 
         // 原有图像统计计算
