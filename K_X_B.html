@@ -15,16 +15,22 @@
             .btn-secondary { @apply bg-white border border-gray-300 hover:bg-gray-100; }
             .btn-success { @apply bg-green-600 hover:bg-green-700 text-white; }
             .btn-warning { @apply bg-orange-600 hover:bg-orange-700 text-white; }
+            .btn:disabled { @apply bg-gray-300 border-gray-300 text-gray-500 cursor-not-allowed; }
             .status { @apply bg-gray-50 p-2 rounded text-sm border border-gray-200 mt-3; }
             .info-panel { @apply bg-gray-900 text-white p-3 rounded-lg text-sm font-mono max-h-40 overflow-auto mt-3; }
-            .file-status { @apply text-xs mt-2 text-green-600 flex items-center gap-1 hidden; }
+            .file-status { @apply text-xs mt-2 text-green-600 flex items-center gap-1; }
+            .size-btn { @apply bg-white border border-gray-300 hover:border-blue-500 hover:bg-blue-50 px-2 py-2 rounded text-sm transition-all; }
+            .size-btn-active { @apply bg-blue-600 border-blue-600 text-white hover:bg-blue-700 hover:text-white; }
         }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen p-4 md:p-6">
     <div class="max-w-7xl mx-auto">
+        <a href="index.html" class="inline-flex items-center gap-2 text-blue-600 hover:underline mb-4">
+            <i class="fa fa-arrow-left"></i> 返回工具导航
+        </a>
         <h1 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <i class="fa fa-calculator text-blue-600"></i> Y16 16bit灰度上位机【大端默认+K*(X-B)运算+保存RAW】
+            <i class="fa fa-calculator text-blue-600"></i> Y16 16bit灰度上位机【K*(X-B)运算+保存RAW】
         </h1>
         <p class="text-gray-500 mb-6">核心运算：Y16=(K.*(X-B))/4096+8192 | 混合调光=0.3线性+0.7直方图 | 保存运算结果为RAW格式</p>
 
@@ -32,13 +38,31 @@
             <!-- 左侧控制面板 -->
             <div class="lg:col-span-1 space-y-4">
                 <div class="control-card">
-                    <h2 class="text-lg font-semibold mb-3 pb-2 border-b border-gray-200">三文件加载【核心】</h2>
-                    <!-- 加载K文件 Uint16 -->
-                    <label class="btn btn-primary w-full cursor-pointer mb-2">
-                        <i class="fa fa-file-text-o"></i> 加载 K 文件 (uint16-系数)
-                        <input type="file" id="fileInputK" accept=".raw,.bin,.dat,.y16" class="hidden">
-                    </label>
-                    <div id="fileKStatus" class="file-status"><i class="fa fa-check"></i> K文件加载完成</div>
+                    <h2 class="text-lg font-semibold mb-3 pb-2 border-b border-gray-200">数据加载与分辨率</h2>
+
+                    <div class="p-3 bg-blue-50 border border-blue-100 rounded-lg mb-3">
+                        <p class="text-sm font-medium text-gray-700 mb-2">K系数来源</p>
+                        <label class="flex items-center gap-2 text-sm mb-2 cursor-pointer">
+                            <input type="radio" name="kSource" value="constant" checked>
+                            <span>默认常量图像：全部像素 K=4096</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-sm cursor-pointer">
+                            <input type="radio" name="kSource" value="file">
+                            <span>从K文件加载（uint16）</span>
+                        </label>
+                    </div>
+
+                    <div id="constantKStatus" class="text-xs text-green-600 mb-2">
+                        <i class="fa fa-check-circle"></i> 当前使用常量 K=4096，无需加载K文件
+                    </div>
+                    <div id="kFileLoader" class="hidden">
+                        <label class="btn btn-primary w-full cursor-pointer mb-2">
+                            <i class="fa fa-file-text-o"></i> 加载 K 文件 (uint16-系数)
+                            <input type="file" id="fileInputK" accept=".raw,.bin,.dat,.y16" class="hidden">
+                        </label>
+                        <div id="fileKStatus" class="file-status"><i class="fa fa-check"></i> K文件加载完成</div>
+                    </div>
+
                     <!-- 加载X16文件 Uint16 -->
                     <label class="btn btn-primary w-full cursor-pointer mb-2">
                         <i class="fa fa-file-text-o"></i> 加载 X16 文件 (uint16-原始图像)
@@ -53,10 +77,15 @@
                     <div id="fileBStatus" class="file-status"><i class="fa fa-check"></i> B文件加载完成</div>
                     
                     <div class="grid grid-cols-2 gap-2 mt-3">
-                        <div><label class="text-xs">宽度</label><input type="number" id="w" value="640" class="w-full text-sm border rounded px-2 py-1 mt-1"></div>
-                        <div><label class="text-xs">高度</label><input type="number" id="h" value="512" class="w-full text-sm border rounded px-2 py-1 mt-1"></div>
+                        <div><label class="text-xs">宽度</label><input type="number" id="w" value="640" class="w-full text-sm border rounded px-2 py-1 mt-1 bg-gray-50" readonly></div>
+                        <div><label class="text-xs">高度</label><input type="number" id="h" value="512" class="w-full text-sm border rounded px-2 py-1 mt-1 bg-gray-50" readonly></div>
                     </div>
-                    <button id="applySize" class="btn btn-secondary w-full mt-2 text-sm py-1">应用尺寸</button>
+                    <div id="sizeOptions" class="grid grid-cols-3 gap-2 mt-2">
+                        <button type="button" class="size-btn" data-width="384" data-height="288">384×288</button>
+                        <button type="button" class="size-btn size-btn-active" data-width="640" data-height="512">640×512</button>
+                        <button type="button" class="size-btn" data-width="1280" data-height="1024">1280×1024</button>
+                    </div>
+                    <p id="expectedSize" class="text-xs text-gray-500 mt-2">每个16位文件应为655,360字节</p>
 
                     <!-- 大小端【默认大端 取消勾选】+行列优先 -->
                     <div class="space-y-2 mt-3">
@@ -71,10 +100,10 @@
                     </div>
 
                     <!-- 核心运算按钮 + 新增保存按钮 -->
-                    <button id="calcBtn" class="btn btn-success w-full mt-4">
+                    <button id="calcBtn" class="btn btn-success w-full mt-4" disabled>
                         <i class="fa fa-refresh"></i> 执行运算 Y16=K*(X-B)
                     </button>
-                    <button id="saveBtn" class="btn btn-warning w-full mt-2">
+                    <button id="saveBtn" class="btn btn-warning w-full mt-2" disabled>
                         <i class="fa fa-save"></i> 保存Y16结果为 RAW 格式
                     </button>
                 </div>
@@ -88,6 +117,9 @@
                         <button id="btnMixLight" class="btn btn-primary w-full">
                             <i class="fa fa-adjust"></i> 混合调光显示(推荐)
                         </button>
+                        <button id="fitViewBtn" class="btn btn-secondary w-full" disabled>
+                            <i class="fa fa-arrows-alt"></i> 完整适应窗口
+                        </button>
                     </div>
                     <div class="status">
                         ✅ 当前模式：<span id="curMode" class="font-medium text-blue-600">混合调光</span>
@@ -97,14 +129,14 @@
 
             <!-- 右侧图像显示区 -->
             <div class="lg:col-span-3 space-y-3">
-                <div class="canvas-box" style="height: 600px;">
+                <div class="canvas-box" style="height: clamp(420px, 65vh, 700px);">
                     <canvas id="mainCanvas" class="w-full h-full"></canvas>
                     <div id="loading" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
-                        <div class="bg-white p-4 rounded-lg flex items-center gap-2"><i class="fa fa-spinner fa-spin text-blue-600"></i>文件解析/运算中...</div>
+                        <div class="bg-white p-4 rounded-lg flex items-center gap-2"><i class="fa fa-spinner fa-spin text-blue-600"></i><span id="loadingText">文件解析/运算中...</span></div>
                     </div>
                     <div id="noImg" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
                         <i class="fa fa-picture-o text-5xl mb-2"></i>
-                        <p>请依次加载 K、X16、B 文件后执行运算</p>
+                        <p>默认K=4096，请加载 X16 与 B 文件后执行运算</p>
                     </div>
                 </div>
 
@@ -129,15 +161,26 @@
         let fileBufferK = null;
         let fileBufferX = null;
         let fileBufferB = null;
+        let fileNameK = '';
+        let fileNameX = '';
+        let fileNameB = '';
         let W = 640, H = 512;     // 图像宽高
         let rowMajor = true;      // 行优先/列优先
         let littleEndian = false; // ✅ 默认大端序 false，小端=true
+        let kSourceMode = 'constant';
         let curDispMode = "mix";  // origin=原始运算结果 mix=混合调光
         let canvasImgData = null; // 画布图像数据
+        const RESOLUTIONS = [
+            { width: 384, height: 288 },
+            { width: 640, height: 512 },
+            { width: 1280, height: 1024 }
+        ];
 
         // 画布交互变量
         const canvas = document.getElementById('mainCanvas');
         const ctx = canvas.getContext('2d');
+        const sourceCanvas = document.createElement('canvas');
+        const sourceCtx = sourceCanvas.getContext('2d');
         let scale = 1, ox = 0, oy = 0;
         let isDrag = false, lx, ly;
 
@@ -148,14 +191,19 @@
         const fileKStatus = document.getElementById('fileKStatus');
         const fileXStatus = document.getElementById('fileXStatus');
         const fileBStatus = document.getElementById('fileBStatus');
+        const constantKStatus = document.getElementById('constantKStatus');
+        const kFileLoader = document.getElementById('kFileLoader');
+        const kSourceRadios = [...document.querySelectorAll('input[name="kSource"]')];
         const wInput = document.getElementById('w');
         const hInput = document.getElementById('h');
-        const applySize = document.getElementById('applySize');
+        const sizeButtons = [...document.querySelectorAll('#sizeOptions button')];
+        const expectedSize = document.getElementById('expectedSize');
         const rowMajorCb = document.getElementById('rowMajor');
         const littleEndianCb = document.getElementById('littleEndian');
         const calcBtn = document.getElementById('calcBtn');
         const saveBtn = document.getElementById('saveBtn'); // 新增保存按钮DOM
         const loading = document.getElementById('loading');
+        const loadingText = document.getElementById('loadingText');
         const noImg = document.getElementById('noImg');
         const btnOrigin = document.getElementById('btnOrigin');
         const btnMixLight = document.getElementById('btnMixLight');
@@ -164,6 +212,7 @@
         const py = document.getElementById('py');
         const pv = document.getElementById('pv');
         const imgInfo = document.getElementById('imgInfo');
+        const fitViewBtn = document.getElementById('fitViewBtn');
 
         // ===== ✅【修复BUG：初始化强制隐藏所有文件加载状态】=====
         fileKStatus.classList.add('hidden');
@@ -176,14 +225,10 @@
             if(!buffer) return null;
             const pixelCount = W * H;
             const needBytes = pixelCount * 2;
-            if(buffer.byteLength < needBytes) return null;
-            const u8Arr = new Uint8Array(buffer, 0, needBytes);
+            if(buffer.byteLength !== needBytes) return null;
+            const view = new DataView(buffer);
             const data = new Uint16Array(pixelCount);
-            if(littleEndian){
-                for(let i=0; i<pixelCount; i++) data[i] = u8Arr[i*2] | (u8Arr[i*2+1] << 8);
-            }else{
-                for(let i=0; i<pixelCount; i++) data[i] = (u8Arr[i*2] << 8) | u8Arr[i*2+1];
-            }
+            for(let i=0; i<pixelCount; i++) data[i] = view.getUint16(i * 2, littleEndian);
             return data;
         }
         // 解析有符号16位 (B文件 重中之重 和MATLAB一致)
@@ -191,48 +236,46 @@
             if(!buffer) return null;
             const pixelCount = W * H;
             const needBytes = pixelCount * 2;
-            if(buffer.byteLength < needBytes) return null;
-            const u8Arr = new Uint8Array(buffer, 0, needBytes);
+            if(buffer.byteLength !== needBytes) return null;
+            const view = new DataView(buffer);
             const data = new Int16Array(pixelCount);
-            if(littleEndian){
-                for(let i=0; i<pixelCount; i++) data[i] = u8Arr[i*2] | (u8Arr[i*2+1] << 8);
-            }else{
-                for(let i=0; i<pixelCount; i++) data[i] = (u8Arr[i*2] << 8) | u8Arr[i*2+1];
-            }
+            for(let i=0; i<pixelCount; i++) data[i] = view.getInt16(i * 2, littleEndian);
             return data;
         }
 
-        // ===== ✅【核心2：1:1复刻你的MATLAB混合调光算法 无任何改动】=====
+        function createConstantKData() {
+            const data = new Uint16Array(W * H);
+            data.fill(4096);
+            return data;
+        }
+
+        // ===== 混合调光：保持MATLAB算法输出一致，使用定长直方图降低大图内存占用 =====
         function light_line(src_image) {
-            const src_double = Float64Array.from(src_image);
-            const minVal = getArrayMin(src_double);
-            const maxVal = getArrayMax(src_double);
+            const minVal = getArrayMin(src_image);
+            const maxVal = getArrayMax(src_image);
             const des = new Uint8Array(src_image.length);
             if (maxVal === minVal) {
                 des.fill(0); // 除零保护
             } else {
                 for(let i=0; i<src_image.length; i++){
-                    des[i] = Math.round( (src_double[i] - minVal) * 255 / (maxVal - minVal) );
+                    des[i] = Math.round( (src_image[i] - minVal) * 255 / (maxVal - minVal) );
                 }
             }
             return des;
         }
         function light_hist(src_image) {
-            const src_double = Float64Array.from(src_image);
             const totalPixels = src_image.length;
             const des = new Uint8Array(totalPixels);
             if(totalPixels === 0) return des;
-            const minVal = getArrayMin(src_double);
-            const maxVal = getArrayMax(src_double);
-            const counts = new Array(maxVal - minVal + 1).fill(0);
-            for(let val of src_double) counts[val - minVal]++;
-            const cumulativeHistogram = new Array(counts.length);
-            cumulativeHistogram[0] = counts[0];
-            for(let i=1; i<counts.length; i++) cumulativeHistogram[i] = cumulativeHistogram[i-1] + counts[i];
+            const cumulativeHistogram = new Uint32Array(65536);
+            for(let i=0; i<src_image.length; i++) cumulativeHistogram[src_image[i]]++;
+            let cumulative = 0;
+            for(let i=0; i<cumulativeHistogram.length; i++) {
+                cumulative += cumulativeHistogram[i];
+                cumulativeHistogram[i] = cumulative;
+            }
             for(let i=0; i<src_image.length; i++){
-                let idx = src_double[i] - minVal;
-                idx = Math.max(0, Math.min(idx, cumulativeHistogram.length - 1));
-                des[i] = Math.round( cumulativeHistogram[idx] * 255 / totalPixels );
+                des[i] = Math.round( cumulativeHistogram[src_image[i]] * 255 / totalPixels );
             }
             return des;
         }
@@ -247,29 +290,35 @@
         }
 
         // ===== ✅【核心3：1:1复刻你的MATLAB运算公式 Y16=K*(X-B)】=====
-        function calcKXB(){
+        async function calcKXB(){
+            reparseInputs();
             if(!KData || !XData || !BData) {
-                alert("请先完整加载 K、X16、B 三个文件！");
+                alert(kSourceMode === 'constant'
+                    ? "当前K使用默认常量4096，请先加载X16和B文件！"
+                    : "请先完整加载K、X16和B三个文件！");
                 return;
             }
-            showLoading(true);
-            const pixelCount = W * H;
-            calcResultData = new Uint16Array(pixelCount);
-            
-            // MATLAB原版运算逻辑：img_diff = X - B → mul_k_x_b = (K.*img_diff)/4096 +8192
-            for(let i=0; i<pixelCount; i++){
-                const img_diff = XData[i] - BData[i];  // X无符号 - B有符号
-                let val = ( KData[i] * img_diff ) / 4096 + 8192;
-                // 可选：解开下面注释 切换为 无缩放版 Y16=K.*(X-B)
-                // let val = KData[i] * img_diff;
-                // 边界钳位 0~65535 防止溢出，适配Uint16标准
-                val = Math.max(0, Math.min(65535, val));
-                calcResultData[i] = Math.round(val);
+            showLoading(true, '正在执行K*(X-B)运算...');
+            await new Promise(resolve => requestAnimationFrame(resolve));
+            try {
+                const pixelCount = W * H;
+                calcResultData = new Uint16Array(pixelCount);
+
+                // MATLAB原版运算逻辑：img_diff = X - B → mul_k_x_b = (K.*img_diff)/4096 +8192
+                for(let i=0; i<pixelCount; i++){
+                    const img_diff = XData[i] - BData[i];  // X无符号 - B有符号
+                    let val = ( KData[i] * img_diff ) / 4096 + 8192;
+                    val = Math.max(0, Math.min(65535, val));
+                    calcResultData[i] = Math.round(val);
+                }
+                calcImgInfo();
+                renderImage(true);
+                noImg.classList.add('hidden');
+                saveBtn.disabled = false;
+                fitViewBtn.disabled = false;
+            } finally {
+                showLoading(false);
             }
-            calcImgInfo();
-            renderImage();
-            noImg.classList.add('hidden');
-            showLoading(false);
         }
 
         // ===== ✅【新增核心功能：保存运算后的Y16数据为 RAW 格式】=====
@@ -278,7 +327,7 @@
                 alert("请先执行运算，生成Y16结果后再保存！");
                 return;
             }
-            showLoading(true);
+            showLoading(true, '正在生成Y16 RAW文件...');
             const pixelCount = W * H;
             const u8Arr = new Uint8Array(pixelCount * 2);
             
@@ -298,12 +347,15 @@
             // 生成RAW二进制文件并下载
             const blob = new Blob([u8Arr], { type: 'application/octet-stream' });
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `Y16_KXB_${W}x${H}.raw`; // 文件名带分辨率，方便识别
+            const url = URL.createObjectURL(blob);
+            a.href = url;
+            a.download = `Y16_KXB_${W}x${H}_${littleEndian ? 'LE' : 'BE'}_${rowMajor ? 'ROW' : 'COL'}.raw`;
+            document.body.appendChild(a);
             a.click();
-            URL.revokeObjectURL(a.href);
+            a.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 1000);
             showLoading(false);
-            alert("✅ Y16运算结果已保存为RAW格式！");
+            alert(`✅ Y16运算结果已保存！\n${a.download}\n${formatBytes(u8Arr.byteLength)}`);
         }
 
         // ===== 工具函数 =====
@@ -315,39 +367,131 @@
             });
         }
 
+        function formatBytes(bytes) {
+            return `${bytes.toLocaleString('zh-CN')}字节`;
+        }
+
+        function getExpectedBytes() {
+            return W * H * 2;
+        }
+
+        function setFileStatus(element, state, message) {
+            const config = {
+                success: { icon: 'fa-check-circle', color: 'text-green-600' },
+                error: { icon: 'fa-exclamation-circle', color: 'text-red-600' },
+                waiting: { icon: 'fa-info-circle', color: 'text-gray-500' }
+            }[state];
+            element.className = `file-status ${config.color}`;
+            element.innerHTML = `<i class="fa ${config.icon}"></i> ${message}`;
+        }
+
+        function updateExpectedSize() {
+            expectedSize.textContent = `每个16位文件应为${formatBytes(getExpectedBytes())}`;
+        }
+
+        function invalidateResult(message = '输入或参数已变化，请重新执行运算') {
+            calcResultData = null;
+            canvasImgData = null;
+            sourceCanvas.width = 0;
+            sourceCanvas.height = 0;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            noImg.classList.remove('hidden');
+            noImg.querySelector('p').textContent = message;
+            saveBtn.disabled = true;
+            fitViewBtn.disabled = true;
+            px.textContent = '--';
+            py.textContent = '--';
+            pv.textContent = '--';
+        }
+
+        function updateReadyState() {
+            const kReady = kSourceMode === 'constant' || KData !== null;
+            calcBtn.disabled = !(kReady && XData && BData);
+        }
+
+        function updateInputStatuses() {
+            if (kSourceMode === 'constant') {
+                constantKStatus.innerHTML =
+                    `<i class="fa fa-check-circle"></i> 当前使用 ${W}×${H} 常量图像：全部像素 K=4096`;
+            } else if (!fileBufferK) {
+                setFileStatus(fileKStatus, 'waiting', '请选择与当前分辨率匹配的K文件');
+            } else if (KData) {
+                setFileStatus(fileKStatus, 'success', `${fileNameK} · ${formatBytes(fileBufferK.byteLength)}`);
+            } else {
+                setFileStatus(fileKStatus, 'error', `${fileNameK} 尺寸不匹配，当前需要${formatBytes(getExpectedBytes())}`);
+            }
+
+            if (!fileBufferX) {
+                setFileStatus(fileXStatus, 'waiting', '尚未加载X16文件');
+            } else if (XData) {
+                setFileStatus(fileXStatus, 'success', `${fileNameX} · ${formatBytes(fileBufferX.byteLength)}`);
+            } else {
+                setFileStatus(fileXStatus, 'error', `${fileNameX} 尺寸不匹配，当前需要${formatBytes(getExpectedBytes())}`);
+            }
+
+            if (!fileBufferB) {
+                setFileStatus(fileBStatus, 'waiting', '尚未加载B文件');
+            } else if (BData) {
+                setFileStatus(fileBStatus, 'success', `${fileNameB} · ${formatBytes(fileBufferB.byteLength)}`);
+            } else {
+                setFileStatus(fileBStatus, 'error', `${fileNameB} 尺寸不匹配，当前需要${formatBytes(getExpectedBytes())}`);
+            }
+        }
+
+        function reparseInputs() {
+            KData = kSourceMode === 'constant' ? createConstantKData() : parseUint16Data(fileBufferK);
+            XData = parseUint16Data(fileBufferX);
+            BData = parseInt16Data(fileBufferB);
+            updateInputStatuses();
+            updateReadyState();
+        }
+
+        function setResolution(width, height, activeButton) {
+            W = width;
+            H = height;
+            wInput.value = width;
+            hInput.value = height;
+            sizeButtons.forEach(button => button.classList.toggle('size-btn-active', button === activeButton));
+            updateExpectedSize();
+            reparseInputs();
+            invalidateResult(`当前分辨率为 ${W}×${H}，请确认输入后执行运算`);
+        }
+
+        function setKSource(mode) {
+            kSourceMode = mode;
+            const useConstant = mode === 'constant';
+            constantKStatus.classList.toggle('hidden', !useConstant);
+            kFileLoader.classList.toggle('hidden', useConstant);
+            reparseInputs();
+            invalidateResult(useConstant ? '默认K=4096，请加载 X16 与 B 文件后执行运算' : '请加载 K、X16 与 B 文件后执行运算');
+        }
+
         // ===== ✅【修复BUG：精准控制文件加载状态，只有加载成功才显示】=====
         async function loadFile(e, type){
             const file = e.target.files[0];
             if(!file) return;
-            showLoading(true);
-            // 重置对应文件状态为隐藏
-            if(type === 'K') fileKStatus.classList.add('hidden');
-            if(type === 'X') fileXStatus.classList.add('hidden');
-            if(type === 'B') fileBStatus.classList.add('hidden');
+            showLoading(true, `正在读取 ${type} 文件...`);
             
             try {
                 const buffer = await readFileToArrayBuffer(file);
-                W = parseInt(wInput.value); H = parseInt(hInput.value);
-                let isSuccess = false;
+                if (buffer.byteLength !== getExpectedBytes()) {
+                    throw new Error(
+                        `${type}文件大小不匹配：当前为${formatBytes(buffer.byteLength)}，` +
+                        `${W}×${H}需要${formatBytes(getExpectedBytes())}`
+                    );
+                }
                 if(type === 'K'){
                     fileBufferK = buffer;
-                    KData = parseUint16Data(buffer);
-                    isSuccess = KData !== null;
+                    fileNameK = file.name;
                 }else if(type === 'X'){
                     fileBufferX = buffer;
-                    XData = parseUint16Data(buffer);
-                    isSuccess = XData !== null;
+                    fileNameX = file.name;
                 }else if(type === 'B'){
                     fileBufferB = buffer;
-                    BData = parseInt16Data(buffer);
-                    isSuccess = BData !== null;
+                    fileNameB = file.name;
                 }
-                // 只有解析成功，才显示加载完成状态
-                if(isSuccess){
-                    if(type === 'K') fileKStatus.classList.remove('hidden');
-                    if(type === 'X') fileXStatus.classList.remove('hidden');
-                    if(type === 'B') fileBStatus.classList.remove('hidden');
-                }
+                reparseInputs();
+                invalidateResult('输入文件已更新，请重新执行运算');
             } catch (err) {
                 alert('文件加载失败：'+err.message);
                 console.error(err);
@@ -357,26 +501,16 @@
         }
 
         // ===== 核心功能函数 =====
-        function updateWH(){
-            const nw = parseInt(wInput.value), nh = parseInt(hInput.value);
-            if(nw>0 && nh>0){ 
-                W=nw; H=nh;
-                // 重新解析三个文件
-                KData = parseUint16Data(fileBufferK);
-                XData = parseUint16Data(fileBufferX);
-                BData = parseInt16Data(fileBufferB);
-                if(calcResultData) renderImage();
-            } else alert('请输入有效宽高');
-        }
         function changeMode(mode){
             curDispMode = mode;
             curMode.textContent = mode==='origin' ? '原始运算结果' : '混合调光(0.3线性+0.7直方图)';
-            renderImage();
+            renderImage(false);
             btnOrigin.className = mode==='origin' ? 'btn btn-primary w-full' : 'btn btn-secondary w-full';
             btnMixLight.className = mode==='mix' ? 'btn btn-primary w-full' : 'btn btn-secondary w-full';
         }
-        function renderImage(){
-            if(!calcResultData) return; showLoading(true);
+        function renderImage(fitView = false){
+            if(!calcResultData) return;
+            showLoading(true, '正在生成显示图像...');
             let disp8Data = new Uint8Array(W*H);
             if(curDispMode === 'mix'){
                 disp8Data = light_mix(calcResultData);
@@ -401,7 +535,14 @@
                 }
             }
             canvasImgData = new ImageData(rgba, W, H);
-            drawCanvas();
+            sourceCanvas.width = W;
+            sourceCanvas.height = H;
+            sourceCtx.putImageData(canvasImgData, 0, 0);
+            if (fitView) {
+                fitImageToCanvas();
+            } else {
+                drawCanvas();
+            }
             showLoading(false);
         }
         function calcImgInfo(){
@@ -411,9 +552,11 @@
             imgInfo.innerHTML = `
                 <p>📊 Y16运算结果统计 (${W}×${H})</p>
                 <p>运算公式：Y16 = (K .* (X - B)) / 4096 + 8192</p>
+                <p>K来源：${kSourceMode === 'constant' ? '默认常量4096' : `文件 ${fileNameK}`}</p>
                 <p>运算后灰度范围：${minV} ~ ${maxV}</p>
                 <p>灰度平均值：${avgV}</p>
                 <p>存储配置：${littleEndian?'小端序':'大端序'} | ${rowMajor?'行优先':'列优先'}</p>
+                <p>输出文件大小：${formatBytes(W * H * 2)}</p>
                 <p class="text-gray-400 text-xs mt-1">混合调光算法：0.3*线性拉伸 + 0.7*直方图均衡 (MATLAB原版)</p>
                 <p class="text-gray-400 text-xs">保存格式：标准RAW (Uint16 二进制，兼容MATLAB)</p>
             `;
@@ -443,42 +586,79 @@
             }else{ px.textContent='--'; py.textContent='--'; pv.textContent='--'; }
         }
         function zoomCanvas(e){
-            const z = e.deltaY<0 ? 1.1 : 0.9; scale = Math.max(0.1, Math.min(10, scale*z)); drawCanvas();
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const imageX = (mouseX - ox) / scale;
+            const imageY = (mouseY - oy) / scale;
+            const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+            const nextScale = Math.max(0.05, Math.min(20, scale * zoomFactor));
+            ox = mouseX - imageX * nextScale;
+            oy = mouseY - imageY * nextScale;
+            scale = nextScale;
+            drawCanvas();
         }
         function drawCanvas(){
-            if(!canvasImgData) return;
+            if(!sourceCanvas.width || !sourceCanvas.height) return;
             ctx.clearRect(0,0,canvas.width,canvas.height);
             ctx.save(); ctx.translate(ox, oy); ctx.scale(scale, scale);
             ctx.imageSmoothingEnabled = false;
-            ctx.putImageData(canvasImgData, 0, 0); ctx.restore();
+            ctx.drawImage(sourceCanvas, 0, 0);
+            ctx.restore();
+        }
+        function fitImageToCanvas(){
+            if(!sourceCanvas.width || !sourceCanvas.height) return;
+            scale = Math.min(canvas.width / W, canvas.height / H);
+            ox = (canvas.width - W * scale) / 2;
+            oy = (canvas.height - H * scale) / 2;
+            drawCanvas();
         }
         function resizeCanvas(){
             canvas.width = canvas.parentElement.clientWidth;
             canvas.height = canvas.parentElement.clientHeight;
-            drawCanvas();
+            if (sourceCanvas.width && sourceCanvas.height) fitImageToCanvas();
         }
-        function showLoading(b){ loading.classList.toggle('hidden',!b); }
+        function showLoading(visible, message = '文件解析/运算中...'){
+            loadingText.textContent = message;
+            loading.classList.toggle('hidden', !visible);
+        }
 
         // ===== 初始化+事件绑定 =====
         window.addEventListener('resize', resizeCanvas);
         fileInputK.addEventListener('change', (e)=>loadFile(e,'K'));
         fileInputX.addEventListener('change', (e)=>loadFile(e,'X'));
         fileInputB.addEventListener('change', (e)=>loadFile(e,'B'));
-        applySize.addEventListener('click', updateWH);
-        rowMajorCb.addEventListener('change', e=>{rowMajor=e.target.checked; renderImage();});
+        sizeButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                setResolution(Number(button.dataset.width), Number(button.dataset.height), button);
+            });
+        });
+        kSourceRadios.forEach(radio => {
+            radio.addEventListener('change', event => {
+                if (event.target.checked) setKSource(event.target.value);
+            });
+        });
+        rowMajorCb.addEventListener('change', e=>{
+            rowMajor=e.target.checked;
+            if(calcResultData) {
+                renderImage(true);
+                calcImgInfo();
+            }
+        });
         littleEndianCb.addEventListener('change', e=>{
             littleEndian = e.target.checked;
-            KData = parseUint16Data(fileBufferK);
-            XData = parseUint16Data(fileBufferX);
-            BData = parseInt16Data(fileBufferB);
-            if(calcResultData) calcKXB();
+            reparseInputs();
+            invalidateResult('大小端设置已变化，请重新执行运算');
         });
         calcBtn.addEventListener('click', calcKXB);
         saveBtn.addEventListener('click', saveY16AsRaw); // 绑定保存按钮事件
         btnOrigin.addEventListener('click', ()=>{changeMode('origin')});
         btnMixLight.addEventListener('click', ()=>{changeMode('mix')});
+        fitViewBtn.addEventListener('click', fitImageToCanvas);
         initCanvasEvent();
         resizeCanvas();
+        updateExpectedSize();
+        setKSource('constant');
     </script>
 </body>
 </html>
