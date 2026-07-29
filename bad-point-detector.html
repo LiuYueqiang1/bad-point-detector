@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>坏点检测上位机</title>
+  <title>Y16图像查看工具</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
   <script>
@@ -45,6 +45,9 @@
       .btn-accent {
         @apply bg-accent hover:bg-accent/90 text-white px-4 py-2 rounded transition-all duration-200 flex items-center justify-center gap-2;
       }
+      .btn-primary:disabled, .btn-secondary:disabled, .btn-accent:disabled {
+        @apply bg-gray-200 border-gray-200 text-gray-400 cursor-not-allowed hover:bg-gray-200;
+      }
       .status-bar {
         @apply bg-light p-2 rounded text-sm border border-gray-200;
       }
@@ -63,6 +66,9 @@
       .drop-hover {
         @apply ring-4 ring-primary/50 bg-primary/10;
       }
+      .force-hidden {
+        display: none !important;
+      }
     }
   </style>
 </head>
@@ -70,10 +76,13 @@
   <div class="container mx-auto px-4 py-6 max-w-7xl">
     <!-- 标题区域 -->
     <header class="mb-6">
+      <a href="index.html" class="inline-flex items-center gap-2 text-primary hover:underline mb-3">
+        <i class="fa fa-arrow-left"></i> 返回工具导航
+      </a>
       <h1 class="text-[clamp(1.5rem,3vw,2.5rem)] font-bold text-dark flex items-center gap-3">
-        <i class="fa fa-search-plus text-primary"></i> 坏点检测上位机
+        <i class="fa fa-image text-primary"></i> Y16图像查看工具
       </h1>
-      <p class="text-gray-500 mt-1">像素级清晰显示 · 全范围对比度拉伸 · 坏点精准检测 · v4.3 修复版</p>
+      <p class="text-gray-500 mt-1">查看原始Y16图像像素值 · 图像增强 · 自动与手动坏点检测</p>
     </header>
 
     <!-- 主内容区域 -->
@@ -86,8 +95,9 @@
           <div class="space-y-3">
             <label class="btn-primary w-full cursor-pointer">
               <i class="fa fa-file-image-o"></i> 加载RAW文件
-              <input type="file" id="fileInput" accept=".raw,.bin,.dat" class="hidden">
+              <input type="file" id="fileInput" accept=".raw,.bin,.dat,.y16" class="hidden">
             </label>
+            <p id="fileStatus" class="text-xs text-gray-500">尚未加载文件</p>
 
             <!-- 分辨率设置：页面打开即显示 -->
             <div id="resolutionSettings" class="text-sm text-gray-500">
@@ -109,6 +119,7 @@
                 <button class="res-btn" data-width="384" data-height="288">384×288</button>
                 <button class="res-btn" data-width="1280" data-height="1024">1280×1024</button>
               </div>
+              <p id="expectedSize" class="text-xs text-gray-400 mt-2">每帧需要 655,360 字节</p>
 
               <div class="space-y-2 mt-4">
                 <div class="flex items-center gap-2 p-2 bg-gray-50 rounded border border-gray-200">
@@ -167,6 +178,17 @@
             <button id="detectButton" class="btn-primary w-full" disabled>
               <i class="fa fa-magic"></i> 自动检测坏点
             </button>
+            <button id="cancelDetectButton" class="btn-secondary w-full force-hidden">
+              <i class="fa fa-stop"></i> 取消检测
+            </button>
+            <div id="detectProgressWrap" class="hidden">
+              <div class="flex justify-between text-xs text-gray-500 mb-1">
+                <span>检测进度</span><span id="detectProgressText">0%</span>
+              </div>
+              <div class="h-2 bg-gray-200 rounded overflow-hidden">
+                <div id="detectProgressBar" class="h-full bg-primary transition-all" style="width: 0%"></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -229,18 +251,21 @@
         </div>
 
         <!-- 图像显示区域 -->
-        <div class="canvas-container" id="canvasContainer" style="height: 600px;">
+        <div class="canvas-container" id="canvasContainer" style="height: clamp(420px, 65vh, 700px);">
           <canvas id="imageCanvas" class="w-full h-full"></canvas>
           <div id="loadingIndicator" class="absolute inset-0 bg-black/50 flex items-center justify-center hidden">
             <div class="bg-white p-4 rounded-lg flex items-center gap-3">
               <i class="fa fa-circle-o-notch fa-spin text-primary text-xl"></i>
-              <span>处理中...</span>
+              <span id="loadingText">处理中...</span>
             </div>
           </div>
           <div id="noImageHint" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400">
             <i class="fa fa-picture-o text-5xl mb-3"></i>
             <p class="text-lg">请加载RAW图像文件</p>
             <p class="text-sm mt-2">或将文件拖拽到此处</p>
+          </div>
+          <div id="dropOverlay" class="absolute inset-0 hidden items-center justify-center bg-primary/15 border-4 border-dashed border-primary text-primary font-semibold text-lg pointer-events-none">
+            松开鼠标加载Y16文件
           </div>
           <div class="mode-indicator view-mode absolute top-2 left-2 bg-black/70 text-white px-3 py-1 rounded text-sm hidden" id="viewModeIndicator">查看模式（滚轮缩放·拖拽平移）</div>
           <div class="mode-indicator mark-mode absolute top-2 left-2 bg-red-500/70 text-white px-3 py-1 rounded text-sm hidden" id="markModeIndicator">标记模式：方向键移动，空格标记，回车退出</div>
@@ -272,7 +297,7 @@
 
     <!-- 页脚 -->
     <footer class="mt-8 text-center text-gray-500 text-sm py-4 border-t">
-      <p>坏点检测上位机 &copy; 2025_v4.1 【分辨率预先设置 · 拖拽加载 · 视图控制 · 坏点点击跳转 · BUG修复版】</p>
+      <p>Y16图像查看工具 · 分辨率自动识别 · 拖拽加载 · 流畅检测 · 大小端掩码导出</p>
     </footer>
   </div>
 
@@ -280,6 +305,7 @@
     // 全局变量
     let imageData = null;
     let originalData = null;
+    let loadedFileName = '';
     let width = 640;
     let height = 512;
     let autoBadPoints = new Set();
@@ -308,16 +334,34 @@
     let isDragging = false;
     let lastX, lastY;
     let imageBitmap = null;
+    let renderFrame = 0;
+    let renderVersion = 0;
+    let detectWorker = null;
+
+    const SUPPORTED_RESOLUTIONS = [
+      { width: 384, height: 288 },
+      { width: 640, height: 512 },
+      { width: 1280, height: 1024 }
+    ];
+    const MAX_VISIBLE_BAD_POINTS = 500;
+    const MAX_DRAW_BAD_POINTS = 50000;
 
     // DOM元素
     const fileInput = document.getElementById('fileInput');
+    const fileStatus = document.getElementById('fileStatus');
+    const expectedSize = document.getElementById('expectedSize');
     const widthInput = document.getElementById('widthInput');
     const heightInput = document.getElementById('heightInput');
     const rowMajorOrderCheckbox = document.getElementById('rowMajorOrder');
     const littleEndianCheckbox = document.getElementById('littleEndian');
     const noImageHint = document.getElementById('noImageHint');
     const loadingIndicator = document.getElementById('loadingIndicator');
+    const loadingText = document.getElementById('loadingText');
     const detectButton = document.getElementById('detectButton');
+    const cancelDetectButton = document.getElementById('cancelDetectButton');
+    const detectProgressWrap = document.getElementById('detectProgressWrap');
+    const detectProgressText = document.getElementById('detectProgressText');
+    const detectProgressBar = document.getElementById('detectProgressBar');
     const saveButton = document.getElementById('saveButton');
     const startMarkingButton = document.getElementById('startMarkingButton');
     const clearManualButton = document.getElementById('clearManualButton');
@@ -346,10 +390,23 @@
     const debugPanel = document.getElementById('debugPanel');
     const badPointListPanel = document.getElementById('badPointListPanel');
     const canvasContainer = document.getElementById('canvasContainer');
+    const dropOverlay = document.getElementById('dropOverlay');
     const fitButton = document.getElementById('fitButton');
     const actualButton = document.getElementById('actualButton');
     const zoomInButton = document.getElementById('zoomInButton');
     const zoomOutButton = document.getElementById('zoomOutButton');
+    const viewButtons = [fitButton, actualButton, zoomInButton, zoomOutButton];
+
+    function setActiveViewButton(activeBtn) {
+      viewButtons.forEach(btn => {
+        btn.classList.remove('btn-view-active');
+        btn.classList.add('btn-secondary');
+      });
+      if (activeBtn) {
+        activeBtn.classList.remove('btn-secondary');
+        activeBtn.classList.add('btn-view-active');
+      }
+    }
 
     // 初始化
     function init() {
@@ -361,67 +418,50 @@
       setupEventListeners();
       bindResolutionButtons();
       setupDragAndDrop();
-      setActiveViewButton(fitButton); // 初始激活拟合屏幕
+      updateExpectedSize();
+      setActiveViewButton(fitButton);
     }
 
     // 设置事件监听器
     function setupEventListeners() {
-    window.addEventListener('resize', resizeCanvas);
-
-      const viewButtons = [
-      document.getElementById('fitButton'),
-      document.getElementById('actualButton'),
-      document.getElementById('zoomInButton'),
-      document.getElementById('zoomOutButton')
-    ];
-    // 视图按钮激活状态切换函数
-    function setActiveViewButton(activeBtn) {
-      // 遍历所有视图按钮，移除激活类、恢复默认类
-      viewButtons.forEach(btn => {
-        if (btn) { // 防止元素不存在的报错
-          btn.classList.remove('btn-view-active'); // 移除激活样式
-          btn.classList.add('btn-secondary'); // 恢复默认样式
-        }
-      });
-      // 给当前点击的按钮添加激活类、移除默认类
-      if (activeBtn) {
-        activeBtn.classList.remove('btn-secondary');
-        activeBtn.classList.add('btn-view-active');
-      }
-    }
+      window.addEventListener('resize', resizeCanvas);
 
 
       thresholdSlider.addEventListener('input', (e) => {
         threshold = parseInt(e.target.value);
         thresholdValue.textContent = threshold;
+        invalidateAutoDetection();
       });
+      neighborhoodSelect.addEventListener('change', invalidateAutoDetection);
 
       brightnessSlider.addEventListener('input', (e) => {
         brightness = parseInt(e.target.value);
         brightnessValue.textContent = brightness;
-        if (imageData) updateImage();
+        scheduleImageUpdate();
       });
 
       contrastSlider.addEventListener('input', (e) => {
         contrast = parseInt(e.target.value);
         contrastValue.textContent = `${contrast}%`;
-        if (imageData) updateImage();
+        scheduleImageUpdate();
       });
 
       gammaSlider.addEventListener('input', (e) => {
         gamma = parseFloat(e.target.value);
         gammaValue.textContent = gamma.toFixed(1);
-        if (imageData) updateImage();
+        scheduleImageUpdate();
       });
 
       minRangeInput.addEventListener('change', (e) => {
         displayMin = parseInt(e.target.value);
-        if (imageData) updateImage();
+        validateDisplayRange('min');
+        scheduleImageUpdate();
       });
 
       maxRangeInput.addEventListener('change', (e) => {
         displayMax = parseInt(e.target.value);
-        if (imageData) updateImage();
+        validateDisplayRange('max');
+        scheduleImageUpdate();
       });
 
       resetEnhanceButton.addEventListener('click', resetEnhanceParams);
@@ -443,7 +483,10 @@
         if (newW > 0 && newW <= 4096) {
           width = newW;
           syncResButtonActive();
+          updateExpectedSize();
           if (originalData) reloadImageData();
+        } else {
+          widthInput.value = width;
         }
       });
 
@@ -452,37 +495,42 @@
         if (newH > 0 && newH <= 4096) {
           height = newH;
           syncResButtonActive();
+          updateExpectedSize();
           if (originalData) reloadImageData();
+        } else {
+          heightInput.value = height;
         }
       });
 
-      fileInput.addEventListener('change', handleFileSelect);
+      fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) loadY16File(file).finally(() => { fileInput.value = ''; });
+      });
       detectButton.addEventListener('click', detectBadPoints);
+      cancelDetectButton.addEventListener('click', () => cancelDetection(true));
       startMarkingButton.addEventListener('click', toggleMarkingMode);
       clearManualButton.addEventListener('click', clearManualMarkings);
       saveButton.addEventListener('click', saveResults);
 
       fitButton.addEventListener('click', () => {
-        resetView(); // 原有功能保留
-        setActiveViewButton(fitButton); // 新增：激活当前按钮
+        resetView();
+        setActiveViewButton(fitButton);
       });
       actualButton.addEventListener('click', () => {
         scale = 1;
         offsetX = (canvas.width - width * scale) / 2;
         offsetY = (canvas.height - height * scale) / 2;
-        drawCanvas(); // 原有功能保留
-        setActiveViewButton(actualButton); // 新增：激活当前按钮
+        drawCanvas();
+        setActiveViewButton(actualButton);
       });
-      // 放大 - 绑定激活逻辑
       zoomInButton.addEventListener('click', () => {
-        zoomView(1.5); // 原有功能保留
-        setActiveViewButton(zoomInButton); // 新增：激活当前按钮
+        zoomView(1.5);
+        setActiveViewButton(zoomInButton);
       });
 
-      // 缩小 - 绑定激活逻辑
       zoomOutButton.addEventListener('click', () => {
-        zoomView(1 / 1.5); // 原有功能保留
-        setActiveViewButton(zoomOutButton); // 新增：激活当前按钮
+        zoomView(1 / 1.5);
+        setActiveViewButton(zoomOutButton);
       });
 
       setupCanvasEvents();
@@ -490,24 +538,38 @@
 
     // 拖拽加载支持
     function setupDragAndDrop() {
-      canvasContainer.addEventListener('dragover', (e) => {
+      canvasContainer.addEventListener('dragenter', (e) => {
         e.preventDefault();
         canvasContainer.classList.add('drop-hover');
+        dropOverlay.classList.remove('hidden');
+        dropOverlay.classList.add('flex');
       });
-      canvasContainer.addEventListener('dragleave', () => {
-        canvasContainer.classList.remove('drop-hover');
+      canvasContainer.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        canvasContainer.classList.add('drop-hover');
+      });
+      canvasContainer.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget && canvasContainer.contains(e.relatedTarget)) return;
+        clearDropState();
       });
       canvasContainer.addEventListener('drop', (e) => {
         e.preventDefault();
-        canvasContainer.classList.remove('drop-hover');
+        clearDropState();
         const file = e.dataTransfer.files[0];
-        if (file && /\.(raw|bin|dat)$/i.test(file.name)) {
-          const dt = new DataTransfer();
-          dt.items.add(file);
-          fileInput.files = dt.files;
-          handleFileSelect({ target: { files: dt.files } });
+        if (!file) return;
+        if (!/\.(raw|bin|dat|y16)$/i.test(file.name)) {
+          alert('请选择 RAW、BIN、DAT 或 Y16 文件');
+          return;
         }
+        loadY16File(file);
       });
+    }
+
+    function clearDropState() {
+      canvasContainer.classList.remove('drop-hover');
+      dropOverlay.classList.add('hidden');
+      dropOverlay.classList.remove('flex');
     }
 
     // 视图缩放（保持中心）
@@ -549,6 +611,7 @@
           // 清空所有按钮的选中状态，只高亮当前点击的
           resBtns.forEach(b => b.classList.remove('active'));
           this.classList.add('active');
+          updateExpectedSize();
           // 有图像则重新加载
           if (originalData) reloadImageData();
         }
@@ -557,29 +620,101 @@
     // ✅ 新增：输入框修改分辨率后，同步按钮选中状态
     function syncResButtonActive(){
         const resBtns = document.querySelectorAll('.res-btn');
+        let matched = false;
         resBtns.forEach(btn => {
             const btnW = parseInt(btn.dataset.width);
             const btnH = parseInt(btn.dataset.height);
             if(btnW === width && btnH === height){
-                resBtns.forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
+                matched = true;
+            } else {
+                btn.classList.remove('active');
             }
         });
+        return matched;
     }
 
     function resizeCanvas() {
       const container = canvas.parentElement;
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
-      if (imageBitmap) drawCanvas();
+      if (imageBitmap) {
+        if (fitButton.classList.contains('btn-view-active')) resetView();
+        else drawCanvas();
+      }
     }
 
     function setupCanvasEvents() {
       canvas.addEventListener('mousedown', handleMouseDown);
       canvas.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
-      canvas.addEventListener('wheel', handleMouseWheel);
+      canvas.addEventListener('wheel', handleMouseWheel, { passive: false });
       window.addEventListener('keydown', handleKeyDown);
+    }
+
+    function formatBytes(bytes) {
+      return `${bytes.toLocaleString('zh-CN')} 字节`;
+    }
+
+    function updateExpectedSize() {
+      expectedSize.textContent = `每帧需要 ${formatBytes(width * height * 2)}`;
+    }
+
+    function applyResolution(newWidth, newHeight) {
+      width = newWidth;
+      height = newHeight;
+      widthInput.value = width;
+      heightInput.value = height;
+      syncResButtonActive();
+      updateExpectedSize();
+    }
+
+    function autoDetectResolution(byteLength) {
+      return SUPPORTED_RESOLUTIONS.find(item => item.width * item.height * 2 === byteLength) || null;
+    }
+
+    function setControlsEnabled(enabled) {
+      detectButton.disabled = !enabled;
+      startMarkingButton.disabled = !enabled;
+      saveButton.disabled = !enabled;
+      clearManualButton.disabled = !enabled;
+      autoAdjustButton.disabled = !enabled;
+    }
+
+    function clearRenderedImage() {
+      renderVersion++;
+      cancelAnimationFrame(renderFrame);
+      if (imageBitmap) imageBitmap.close();
+      imageBitmap = null;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function clearBadPoints() {
+      autoBadPoints.clear();
+      manualBadPoints.clear();
+      updateBadCount();
+      updateBadPointList();
+    }
+
+    function invalidateAutoDetection() {
+      if (detectWorker) cancelDetection(false);
+      if (autoBadPoints.size) {
+        autoBadPoints.clear();
+        updateBadCount();
+        updateBadPointList();
+        drawCanvas();
+      }
+    }
+
+    function validateDisplayRange(changedSide) {
+      displayMin = Math.max(0, Math.min(65534, Number(displayMin) || 0));
+      displayMax = Math.max(1, Math.min(65535, Number(displayMax) || 65535));
+      if (displayMin >= displayMax) {
+        if (changedSide === 'min') displayMin = displayMax - 1;
+        else displayMax = displayMin + 1;
+      }
+      minRangeInput.value = displayMin;
+      maxRangeInput.value = displayMax;
     }
 
     function resetEnhanceParams() {
@@ -588,85 +723,108 @@
       contrastSlider.value = contrast; contrastValue.textContent = `${contrast}%`;
       gammaSlider.value = gamma; gammaValue.textContent = gamma.toFixed(1);
       minRangeInput.value = displayMin; maxRangeInput.value = displayMax;
-      if (imageData) updateImage();
+      scheduleImageUpdate();
     }
 
-    function autoAdjustImage() {
+    function autoAdjustImage(shouldRender = true) {
       if (!imageData) return;
       displayMin = imageStats.p1;
       displayMax = imageStats.p99;
+      if (displayMin >= displayMax) {
+        displayMin = imageStats.min;
+        displayMax = imageStats.max;
+      }
+      if (displayMin >= displayMax) {
+        displayMin = Math.max(0, displayMin - 1);
+        displayMax = Math.min(65535, displayMax + 1);
+      }
       minRangeInput.value = displayMin;
       maxRangeInput.value = displayMax;
-      updateImage();
+      if (shouldRender) scheduleImageUpdate();
     }
 
-    function reloadImageData() {
+    async function reloadImageData() {
       if (!originalData) return;
-      showLoading();
+      cancelDetection(false);
+      showLoading('正在重新解析Y16图像...');
       try {
         const totalPixels = width * height;
         imageData = convertEndianness(originalData, totalPixels);
+        clearBadPoints();
         calculateImageStats();
-        updateImage();
-        resetView();
-        hideLoading();
+        await updateImage(true);
+        fileStatus.className = 'text-xs text-green-600';
+        fileStatus.textContent = `${loadedFileName} · ${width}×${height} · ${formatBytes(originalData.byteLength)}`;
+        setControlsEnabled(true);
       } catch (error) {
         console.error('重新加载图像失败:', error);
+        imageData = null;
+        clearRenderedImage();
+        setControlsEnabled(false);
+        noImageHint.classList.remove('hidden');
+        noImageHint.querySelector('.text-lg').textContent = '当前分辨率与文件大小不匹配';
+        fileStatus.className = 'text-xs text-red-600';
+        fileStatus.textContent = `${loadedFileName} · 当前需要 ${formatBytes(width * height * 2)}`;
+      } finally {
         hideLoading();
       }
     }
 
     function convertEndianness(byteData, totalPixels) {
       const result = new Uint16Array(totalPixels);
-      const byteView = new Uint8Array(byteData);
       const needBytes = totalPixels * 2;
-      if (byteView.length < needBytes) {
-        throw new Error(`数据不足：需要 ${needBytes} 字节，但只提供了 ${byteView.length} 字节`);
+      if (byteData.byteLength !== needBytes) {
+        throw new Error(`文件大小不匹配：需要 ${formatBytes(needBytes)}，实际为 ${formatBytes(byteData.byteLength)}`);
       }
+      const view = new DataView(byteData);
       for (let i = 0; i < totalPixels; i++) {
-        const byteOffset = i * 2;
-        if (littleEndian) {
-          result[i] = (byteView[byteOffset + 1] << 8) | byteView[byteOffset];
-        } else {
-          result[i] = (byteView[byteOffset] << 8) | byteView[byteOffset + 1];
-        }
+        result[i] = view.getUint16(i * 2, littleEndian);
       }
       return result;
     }
 
-    async function handleFileSelect(e) {
-      const file = e.target.files[0];
+    async function loadY16File(file) {
       if (!file) return;
-      showLoading();
-
-      // 直接使用当前输入的分辨率
-      width = parseInt(widthInput.value);
-      height = parseInt(heightInput.value);
+      cancelDetection(false);
+      showLoading('正在加载Y16文件...');
 
       try {
         const arrayBuffer = await readFileAsync(file);
+        const detected = autoDetectResolution(arrayBuffer.byteLength);
+        if (detected) {
+          applyResolution(detected.width, detected.height);
+        } else if (arrayBuffer.byteLength !== width * height * 2) {
+          throw new Error(
+            `无法匹配分辨率：文件为 ${formatBytes(arrayBuffer.byteLength)}，` +
+            `当前 ${width}×${height} 需要 ${formatBytes(width * height * 2)}`
+          );
+        }
         originalData = arrayBuffer;
+        loadedFileName = file.name;
         const totalPixels = width * height;
         imageData = convertEndianness(originalData, totalPixels);
         calculateImageStats();
-        autoAdjustImage();
-        autoBadPoints.clear();
-        manualBadPoints.clear();
-        updateBadCount();
-        updateBadPointList();
-        updateImage();
-        resetView();
+        autoAdjustImage(false);
+        clearBadPoints();
+        await updateImage(true);
 
-        detectButton.disabled = false;
-        startMarkingButton.disabled = false;
-        saveButton.disabled = false;
-        clearManualButton.disabled = false;
-        autoAdjustButton.disabled = false;
+        setControlsEnabled(true);
         noImageHint.classList.add('hidden');
         canvas.style.cursor = 'grab';
         viewModeIndicator.classList.remove('hidden');
+        fileStatus.className = 'text-xs text-green-600';
+        fileStatus.textContent = `${loadedFileName} · ${width}×${height} · ${formatBytes(arrayBuffer.byteLength)}`;
       } catch (error) {
         console.error('加载文件失败:', error);
+        imageData = null;
+        originalData = null;
+        loadedFileName = '';
+        clearRenderedImage();
+        setControlsEnabled(false);
+        noImageHint.classList.remove('hidden');
+        noImageHint.querySelector('.text-lg').textContent = '请加载RAW图像文件';
+        fileStatus.className = 'text-xs text-red-600';
+        fileStatus.textContent = error.message;
         alert('加载文件失败: ' + error.message);
       } finally {
         hideLoading();
@@ -675,14 +833,38 @@
 
     function calculateImageStats() {
       if (!imageData) return;
-      const sortedValues = new Uint16Array(imageData);
-      sortedValues.sort();
-      const minValue = sortedValues[0];
-      const maxValue = sortedValues[sortedValues.length - 1];
-      const p1 = sortedValues[Math.floor(sortedValues.length * 0.01)];
-      const p99 = sortedValues[Math.floor(sortedValues.length * 0.99)];
+      const histogram = new Uint32Array(65536);
+      for (let i = 0; i < imageData.length; i++) histogram[imageData[i]]++;
+      const p1Target = Math.max(1, Math.ceil(imageData.length * 0.01));
+      const p99Target = Math.max(1, Math.ceil(imageData.length * 0.99));
+      let cumulative = 0;
+      let minValue = 0;
+      let maxValue = 65535;
+      let p1 = 0;
+      let p99 = 65535;
+      let minFound = false;
+      let p1Found = false;
+      let p99Found = false;
+      for (let value = 0; value < histogram.length; value++) {
+        const count = histogram[value];
+        if (!count) continue;
+        if (!minFound) {
+          minValue = value;
+          minFound = true;
+        }
+        maxValue = value;
+        cumulative += count;
+        if (!p1Found && cumulative >= p1Target) {
+          p1 = value;
+          p1Found = true;
+        }
+        if (!p99Found && cumulative >= p99Target) {
+          p99 = value;
+          p99Found = true;
+        }
+      }
 
-      imageStats = { min: minValue, max: maxValue, p1: p1, p99: p99 };
+      imageStats = { min: minValue, max: maxValue, p1, p99 };
       debugPanel.innerHTML = `
         <p class="font-medium mb-1">图像统计 (${width}×${height}):</p>
         <p>最小值: ${minValue}, 最大值: ${maxValue}</p>
@@ -691,16 +873,30 @@
       `;
     }
 
-    async function updateImage() {
+    function scheduleImageUpdate() {
       if (!imageData) return;
-      showLoading();
+      cancelAnimationFrame(renderFrame);
+      renderFrame = requestAnimationFrame(() => {
+        updateImage(false).catch(error => console.error('更新图像失败:', error));
+      });
+    }
+
+    async function updateImage(fitToScreen = false) {
+      if (!imageData) return;
+      const version = ++renderVersion;
       try {
-        await createImageBitmapFromData();
-        drawCanvas();
-        hideLoading();
+        const nextBitmap = await createImageBitmapFromData();
+        if (version !== renderVersion) {
+          nextBitmap.close();
+          return;
+        }
+        if (imageBitmap) imageBitmap.close();
+        imageBitmap = nextBitmap;
+        if (fitToScreen) resetView();
+        else drawCanvas();
       } catch (error) {
         console.error('更新图像失败:', error);
-        hideLoading();
+        throw error;
       }
     }
 
@@ -730,7 +926,7 @@
       }
 
       const imageDataObj = new ImageData(rgbaData, width, height);
-      imageBitmap = await createImageBitmap(imageDataObj);
+      return createImageBitmap(imageDataObj);
     }
 
     function drawCanvas() {
@@ -743,20 +939,28 @@
       ctx.drawImage(imageBitmap, 0, 0);
 
       ctx.fillStyle = 'rgba(255, 0, 0, 0.7)';
-      autoBadPoints.forEach(point => {
-        const [y, x] = point.split(',').map(Number);
-        ctx.beginPath();
+      ctx.beginPath();
+      let drawnPoints = 0;
+      for (const pointIndex of autoBadPoints) {
+        if (drawnPoints++ >= MAX_DRAW_BAD_POINTS) break;
+        const x = pointIndex % width;
+        const y = Math.floor(pointIndex / width);
+        ctx.moveTo(x + 0.5 + 2 / scale, y + 0.5);
         ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      }
+      ctx.fill();
 
       ctx.fillStyle = 'rgba(0, 204, 255, 1)';
-      manualBadPoints.forEach(point => {
-        const [y, x] = point.split(',').map(Number);
-        ctx.beginPath();
+      ctx.beginPath();
+      drawnPoints = 0;
+      for (const pointIndex of manualBadPoints) {
+        if (drawnPoints++ >= MAX_DRAW_BAD_POINTS) break;
+        const x = pointIndex % width;
+        const y = Math.floor(pointIndex / width);
+        ctx.moveTo(x + 0.5 + 2 / scale, y + 0.5);
         ctx.arc(x + 0.5, y + 0.5, 2 / scale, 0, Math.PI * 2);
-        ctx.fill();
-      });
+      }
+      ctx.fill();
 
       if (isMarkingMode) {
         ctx.strokeStyle = 'rgba(0, 255, 0, 1)';
@@ -773,55 +977,109 @@
       ctx.restore();
     }
 
-    async function detectBadPoints() {
-      if (!imageData) return;
-      showLoading();
-      detectButton.disabled = true;
-      try {
-        const neighborhoodSize = parseInt(neighborhoodSelect.value);
-        const halfNeighborhood = Math.floor(neighborhoodSize / 2);
-        const badPoints = new Set();
-
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const centerIndex = rowMajorOrder ? (y * width + x) : (x * height + y);
-            const centerValue = imageData[centerIndex];
-            let aboveThresholdCount = 0;
-            let validNeighbors = 0;
-
-            for (let ny = -halfNeighborhood; ny <= halfNeighborhood; ny++) {
-              for (let nx = -halfNeighborhood; nx <= halfNeighborhood; nx++) {
-                if (nx === 0 && ny === 0) continue;
-                const neighborX = x + nx;
-                const neighborY = y + ny;
-                if (neighborX >= 0 && neighborX < width && neighborY >= 0 && neighborY < height) {
-                  const neighborIndex = rowMajorOrder ? (neighborY * width + neighborX) : (neighborX * height + neighborY);
-                  const neighborValue = imageData[neighborIndex];
-                  if (Math.abs(centerValue - neighborValue) > threshold) {
-                    aboveThresholdCount++;
-                  }
+    function createDetectionWorker() {
+      const workerSource = `
+        self.onmessage = ({ data }) => {
+          const pixels = new Uint16Array(data.buffer);
+          const { width, height, threshold, neighborhoodSize, rowMajorOrder } = data;
+          const half = Math.floor(neighborhoodSize / 2);
+          const badPoints = [];
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const centerIndex = rowMajorOrder ? y * width + x : x * height + y;
+              const centerValue = pixels[centerIndex];
+              let aboveThresholdCount = 0;
+              let validNeighbors = 0;
+              for (let ny = -half; ny <= half; ny++) {
+                for (let nx = -half; nx <= half; nx++) {
+                  if (nx === 0 && ny === 0) continue;
+                  const neighborX = x + nx;
+                  const neighborY = y + ny;
+                  if (neighborX < 0 || neighborX >= width || neighborY < 0 || neighborY >= height) continue;
+                  const neighborIndex = rowMajorOrder
+                    ? neighborY * width + neighborX
+                    : neighborX * height + neighborY;
+                  if (Math.abs(centerValue - pixels[neighborIndex]) > threshold) aboveThresholdCount++;
                   validNeighbors++;
                 }
               }
+              if (validNeighbors && aboveThresholdCount > validNeighbors / 2) {
+                badPoints.push(y * width + x);
+              }
             }
-
-            if (validNeighbors > 0 && aboveThresholdCount > validNeighbors / 2) {
-              badPoints.add(`${y},${x}`);
+            if (y % 16 === 0) {
+              self.postMessage({ type: 'progress', progress: Math.round((y + 1) * 100 / height) });
             }
           }
-        }
+          self.postMessage({ type: 'done', badPoints });
+        };
+      `;
+      const url = URL.createObjectURL(new Blob([workerSource], { type: 'text/javascript' }));
+      const worker = new Worker(url);
+      URL.revokeObjectURL(url);
+      return worker;
+    }
 
-        autoBadPoints = badPoints;
-        updateBadCount();
-        updateBadPointList();
-        drawCanvas();
-      } catch (error) {
-        console.error('检测坏点失败:', error);
-        alert('检测坏点失败: ' + error.message);
-      } finally {
-        detectButton.disabled = false;
-        hideLoading();
+    function setDetectionProgress(progress) {
+      const safeProgress = Math.max(0, Math.min(100, progress));
+      detectProgressText.textContent = `${safeProgress}%`;
+      detectProgressBar.style.width = `${safeProgress}%`;
+    }
+
+    function cancelDetection(showNotice = false) {
+      if (detectWorker) {
+        detectWorker.terminate();
+        detectWorker = null;
+        if (showNotice) fileStatus.textContent = `${loadedFileName} · 已取消坏点检测`;
       }
+      detectButton.disabled = !imageData;
+      cancelDetectButton.classList.add('force-hidden');
+      detectProgressWrap.classList.add('hidden');
+      setDetectionProgress(0);
+    }
+
+    function detectBadPoints() {
+      if (!imageData || detectWorker) return;
+      detectButton.disabled = true;
+      cancelDetectButton.classList.remove('force-hidden');
+      detectProgressWrap.classList.remove('hidden');
+      setDetectionProgress(0);
+
+      const worker = createDetectionWorker();
+      detectWorker = worker;
+      worker.onmessage = ({ data }) => {
+        if (worker !== detectWorker) return;
+        if (data.type === 'progress') {
+          setDetectionProgress(data.progress);
+          return;
+        }
+        if (data.type === 'done') {
+          autoBadPoints = new Set(data.badPoints);
+          setDetectionProgress(100);
+          updateBadCount();
+          updateBadPointList();
+          drawCanvas();
+          fileStatus.textContent = `${loadedFileName} · 检测完成，自动坏点 ${autoBadPoints.size} 个`;
+          window.setTimeout(() => {
+            if (worker === detectWorker) cancelDetection(false);
+          }, 250);
+        }
+      };
+      worker.onerror = (event) => {
+        console.error('检测坏点失败:', event.message);
+        alert('检测坏点失败: ' + event.message);
+        cancelDetection(false);
+      };
+
+      const pixelsCopy = imageData.slice();
+      worker.postMessage({
+        buffer: pixelsCopy.buffer,
+        width,
+        height,
+        threshold,
+        neighborhoodSize: parseInt(neighborhoodSelect.value),
+        rowMajorOrder
+      }, [pixelsCopy.buffer]);
     }
 
   function toggleMarkingMode() {
@@ -834,8 +1092,8 @@
       currentXEl.textContent = '-';
       currentYEl.textContent = '-';
       currentValueEl.textContent = '-';
-      ; document.body.style.cursor = '';
-      canvas.style.cursor = 'crosshair';
+      document.body.style.cursor = '';
+      canvas.style.cursor = 'grab';
       viewModeIndicator.classList.remove('hidden');
       markModeIndicator.classList.add('hidden');
     } else {
@@ -847,7 +1105,7 @@
       currentY = Math.floor(height / 2);
       updateCurrentPositionInfo();
       document.body.style.cursor = 'crosshair';
-      canvas.style.cursor = 'grab';
+      canvas.style.cursor = 'crosshair';
       viewModeIndicator.classList.add('hidden');
       markModeIndicator.classList.remove('hidden');
     }
@@ -863,17 +1121,19 @@
       }
     }
 
-    function saveResults() {
+    async function saveResults() {
       if (!imageData) return;
-      showLoading();
+      showLoading('正在生成坏点掩码...');
+      await new Promise(resolve => requestAnimationFrame(resolve));
       try {
         const totalPixels = width * height;
         const totalBytes = totalPixels * 2;
         const badFlagData = new Uint16Array(totalPixels);
         const allBadPoints = new Set([...autoBadPoints, ...manualBadPoints]);
 
-        allBadPoints.forEach(point => {
-          const [y, x] = point.split(',').map(Number);
+        allBadPoints.forEach(pointIndex => {
+          const x = pointIndex % width;
+          const y = Math.floor(pointIndex / width);
           const index = rowMajorOrder ? (y * width + x) : (x * height + y);
           badFlagData[index] = 0x1000;
         });
@@ -894,16 +1154,15 @@
         const blob = new Blob([byteData.buffer], { type: 'application/octet-stream' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        let downloadName = 'bad_points.bin';
-        if (fileInput.files[0]) {
-          downloadName = fileInput.files[0].name.replace(/\.[^/.]+$/, "") + "_bad.bin";
-        }
+        const baseName = (loadedFileName || 'Y16').replace(/\.[^/.]+$/, '');
+        const downloadName =
+          `${baseName}_bad_${width}x${height}_${littleEndian ? 'LE' : 'BE'}_${rowMajorOrder ? 'ROW' : 'COL'}.bin`;
         a.href = url;
         a.download = downloadName;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        a.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch (error) {
         console.error('保存文件失败:', error);
         alert('保存文件失败: ' + error.message);
@@ -959,21 +1218,15 @@
       const y = Math.floor((mouseY - offsetY) / scale);
       if (x >= 0 && x < width && y >= 0 && y < height) {
         const index = rowMajorOrder ? (y * width + x) : (x * height + y);
-        const value = imageData[index];
         currentXEl.textContent = x;
         currentYEl.textContent = y;
-        currentValueEl.textContent = value;
-        if (!isDragging) {
+        currentValueEl.textContent = imageData[index];
         canvas.style.cursor = isMarkingMode ? 'crosshair' : 'grab';
-      }else {
-      if (!isDragging) {
-        canvas.style.cursor = 'default';
-      }
-      }
       } else {
         currentXEl.textContent = '-';
         currentYEl.textContent = '-';
         currentValueEl.textContent = '-';
+        canvas.style.cursor = 'default';
       }
     }
 
@@ -1030,7 +1283,7 @@
           break;
         case ' ':
           e.preventDefault(); // 阻止空格翻页
-          const point = `${currentY},${currentX}`;
+          const point = currentY * width + currentX;
           if (manualBadPoints.has(point)) {
             manualBadPoints.delete(point);
           } else {
@@ -1063,7 +1316,7 @@
     function updateBadCount() {
       const autoCount = autoBadPoints.size;
       const manualCount = manualBadPoints.size;
-      const totalCount = autoCount + manualCount;
+      const totalCount = new Set([...autoBadPoints, ...manualBadPoints]).size;
       const totalPixels = width * height;
       const percentage = totalPixels > 0 ? (totalCount / totalPixels * 100).toFixed(6) : '0.0000';
 
@@ -1074,41 +1327,42 @@
     }
 
     function updateBadPointList() {
-      const autoList = Array.from(autoBadPoints)
-        .sort((a, b) => {
-          const [ya, xa] = a.split(',').map(Number);
-          const [yb, xb] = b.split(',').map(Number);
-          return ya - yb || xa - xb;
-        })
-        .map(point => {
-          const [y, x] = point.split(',').map(Number);
-          return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-red-400">(${x}, ${y})</span> <span class="text-red-300 text-xs">自动</span></div>`;
-        });
-
-      const manualList = Array.from(manualBadPoints)
-        .sort((a, b) => {
-          const [ya, xa] = a.split(',').map(Number);
-          const [yb, xb] = b.split(',').map(Number);
-          return ya - yb || xa - xb;
-        })
-        .map(point => {
-          const [y, x] = point.split(',').map(Number);
-          return `<div class="cursor-pointer hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})"><span class="text-blue-400">(${x}, ${y})</span> <span class="text-blue-300 text-xs">手动</span></div>`;
-        });
-
-      const allPoints = [...autoList, ...manualList];
-
-      if (allPoints.length === 0) {
+      const totalUnique = new Set([...autoBadPoints, ...manualBadPoints]).size;
+      if (totalUnique === 0) {
         badPointListPanel.innerHTML = `
           <p class="font-medium mb-1 text-green-400">📌 坏点列表：</p>
           <p class="text-gray-300">暂无坏点数据，请加载图像并检测/标记</p>
         `;
-      } else {
-        badPointListPanel.innerHTML = `
-          <p class="font-medium mb-1 text-green-400">📌 坏点列表（共 ${allPoints.length} 个，点击坐标可跳转）：</p>
-          <div class="flex flex-col gap-1 mt-1">${allPoints.join('')}</div>
-        `;
+        return;
       }
+
+      const manualIndexes = Array.from(manualBadPoints).sort((a, b) => a - b);
+      const autoLimit = Math.max(0, MAX_VISIBLE_BAD_POINTS - Math.min(manualIndexes.length, MAX_VISIBLE_BAD_POINTS));
+      const autoIndexes = [];
+      for (const pointIndex of autoBadPoints) {
+        if (!manualBadPoints.has(pointIndex)) autoIndexes.push(pointIndex);
+        if (autoIndexes.length >= autoLimit) break;
+      }
+      const visiblePoints = [
+        ...autoIndexes.map(pointIndex => ({ pointIndex, type: 'auto' })),
+        ...manualIndexes.slice(0, MAX_VISIBLE_BAD_POINTS).map(pointIndex => ({ pointIndex, type: 'manual' }))
+      ];
+      const pointHtml = visiblePoints.map(({ pointIndex, type }) => {
+        const x = pointIndex % width;
+        const y = Math.floor(pointIndex / width);
+        const isAuto = type === 'auto';
+        return `<button type="button" class="text-left hover:bg-white/10 py-0.5" onclick="centerOnPoint(${x},${y})">` +
+          `<span class="${isAuto ? 'text-red-400' : 'text-blue-400'}">(${x}, ${y})</span> ` +
+          `<span class="${isAuto ? 'text-red-300' : 'text-blue-300'} text-xs">${isAuto ? '自动' : '手动'}</span></button>`;
+      });
+      const truncated = totalUnique > visiblePoints.length
+        ? `<p class="text-yellow-300 text-xs mt-2">为保证流畅，仅显示前 ${visiblePoints.length} 个；导出的BIN仍包含全部 ${totalUnique} 个坏点。</p>`
+        : '';
+      badPointListPanel.innerHTML = `
+        <p class="font-medium mb-1 text-green-400">📌 坏点列表（共 ${totalUnique} 个，点击坐标可跳转）：</p>
+        <div class="flex flex-col gap-1 mt-1">${pointHtml.join('')}</div>
+        ${truncated}
+      `;
     }
 
     function updateCurrentPositionInfo() {
@@ -1119,7 +1373,8 @@
       currentValueEl.textContent = imageData[index];
     }
 
-    function showLoading() {
+    function showLoading(message = '处理中...') {
+      loadingText.textContent = message;
       loadingIndicator.classList.remove('hidden');
     }
 
