@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Y16 / Y8 本地图像查看器 · 072</title>
+<style>
+:root{--bg:#11151c;--panel:#1a202b;--edge:#323d4f;--text:#e9eef6;--dim:#adbace;--accent:#84c9ff;--input:#111822;--error:#ffb7ac}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 "Microsoft YaHei","Segoe UI",sans-serif}main{max-width:1800px;margin:auto;padding:22px 26px}h1{font-size:23px;font-weight:600;margin:0}p{margin:5px 0}.muted{color:var(--dim)}.head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}.badge{color:#b9dcf4;border:1px solid var(--edge);border-radius:30px;padding:5px 12px;white-space:nowrap}.drop{border:1px dashed #55738e;border-radius:10px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:20px;background:#182331;margin-bottom:14px}.drop.dragging{background:#203c51;border-color:var(--accent)}.drop strong{display:block;font-size:17px;font-weight:500;margin-bottom:4px}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}button,input,select{font:inherit;color:inherit}button,select,input[type=number]{background:var(--input);border:1px solid #415068;border-radius:5px;padding:7px 9px;min-height:34px}button{cursor:pointer}button:hover:enabled{border-color:var(--accent);background:#24354a}button:disabled{opacity:.4;cursor:default}.primary{background:#a9d9fc;color:#102030;border-color:#a9d9fc;font-weight:600}.primary:hover:enabled{background:#cce9ff;color:#102030}.format{gap:14px}.format label{display:flex;align-items:center;gap:8px}.format input[type=number]{width:76px}#headerBytes{width:103px}input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;margin:8px 0}input:disabled{opacity:.4}select{max-width:100%}label{color:var(--dim)}label b{color:var(--text);font-weight:500}details{margin:12px 0}summary{color:var(--dim);cursor:pointer}details .row{margin-top:10px}.status{margin:12px 0;padding:9px 12px;background:var(--panel);border-radius:6px;overflow-wrap:anywhere}.status:empty{display:none}#error{color:var(--error);border-left:3px solid #ee9281}#warning{color:#efcc91;border-left:3px solid #b5985b}.layout{display:grid;grid-template-columns:268px minmax(0,1fr);gap:16px;align-items:start}.controls{background:var(--panel);border:1px solid var(--edge);padding:16px;border-radius:8px}.group{margin:0 0 20px}.group:last-child{margin-bottom:0}.group-title{font-size:15px;font-weight:500;margin-bottom:8px}.value-row{display:flex;align-items:center;justify-content:space-between;gap:6px}.value-row input[type=number]{width:83px;text-align:right;font-variant-numeric:tabular-nums}.limits{display:grid;grid-template-columns:1fr 1fr;gap:8px}.limits label{display:block}.limits input{width:100%;margin-top:5px}.controls button{font-size:13px}.controls .row{gap:6px}.frame-nav{display:flex;align-items:center;gap:8px}.frame-nav input{width:82px;text-align:center;font-variant-numeric:tabular-nums}#frameTotal{color:var(--dim);white-space:nowrap}.stage{min-width:0}.images{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.image-panel{min-width:0;border:1px solid var(--edge);border-radius:8px;overflow:hidden;background:#0b0d12}.image-label{padding:9px 12px;border-bottom:1px solid var(--edge);background:var(--panel);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.image-label strong{font-weight:500}.image-label span{color:var(--dim);font-size:12px}.canvas-space{position:relative;line-height:0;min-height:210px;display:flex;align-items:center;justify-content:center}.canvas-space canvas{display:block;width:100%;height:auto;image-rendering:pixelated}.placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);line-height:1.6;padding:20px;text-align:center;pointer-events:none}.meta{margin-top:12px;color:var(--dim);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}.stats b{color:var(--text);font-weight:500}.pixel{min-height:28px;margin-top:8px;color:#b9dcf4;font-variant-numeric:tabular-nums}.actions{margin-top:14px}.file-list{max-height:180px;overflow:auto;font-size:12px;color:var(--dim);padding-left:20px}.note{font-size:12px;color:var(--dim);margin-top:9px}.footer{margin-top:20px;color:var(--dim);font-size:12px}.key{border:1px solid var(--edge);padding:0 5px;border-radius:3px}a{color:var(--accent)}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}body:not(.ready) .requires-file{opacity:.55}[hidden]{display:none!important}
+.endian-controls{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.endian-controls button[aria-pressed="true"]{background:#214a66;border-color:var(--accent);color:#dff1ff}.endian-controls .muted{font-size:12px}
+.zoom-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:8px}.zoom-toolbar button[aria-pressed="true"]{background:#214a66;border-color:var(--accent);color:#dff1ff}.zoom-note{font-size:12px;color:var(--dim);margin:0 0 10px}.canvas-space.pixel-view{display:block;height:clamp(260px,48vh,560px);min-height:0;overflow:hidden;touch-action:none;cursor:grab;user-select:none}.canvas-space.pixel-view.dragging{cursor:grabbing}.canvas-space.pixel-view canvas{position:absolute;max-width:none!important;max-height:none!important;image-rendering:pixelated;image-rendering:crisp-edges;image-rendering:pixelated;touch-action:none;user-select:none}.large-dialog{width:calc(100vw - 24px);height:calc(100vh - 24px);height:calc(100dvh - 24px);max-width:none;max-height:none;margin:auto;padding:14px;background:var(--bg);color:var(--text);border:1px solid var(--edge);border-radius:8px}.large-dialog::backdrop{background:rgba(0,0,0,.82)}.large-shell{display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;height:100%;gap:9px}.large-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}.large-head h2{margin:0;font-size:18px;font-weight:500}.large-controls{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.large-controls label{display:flex;align-items:center;gap:6px}.large-controls input[type=number]{width:76px;text-align:center}.large-controls select{min-width:80px}.large-view.pixel-view{height:100%;border:1px solid var(--edge);border-radius:5px;background:#080a0e}.large-foot{font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.large-frame-label{font-variant-numeric:tabular-nums;white-space:nowrap}button#openLarge{margin-left:auto}dialog .zoom-note{margin:0}.large-error{color:var(--error)}
+@media(max-width:1100px){main{padding:16px}.layout{grid-template-columns:236px minmax(0,1fr)}.images{grid-template-columns:1fr}.canvas-space canvas{max-width:760px}.image-panel{max-width:900px}}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.group{margin:0}.drop{padding:15px;align-items:flex-start;flex-direction:column}.format{align-items:flex-start;gap:8px}main{padding:12px}.images{grid-template-columns:1fr}h1{font-size:20px}.frame-group{grid-column:1/-1}.meta{font-size:12px}}
+@media(max-width:390px){.controls{grid-template-columns:1fr}.head{gap:7px}.format label{flex-wrap:wrap}}
+.back-nav{display:inline-flex;align-items:center;gap:6px;margin-bottom:18px;color:var(--accent);font-size:14px;text-decoration:none}.back-nav:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+<nav aria-label="工具导航"><a class="back-nav" href="index.html">← 返回工具导航</a></nav>
+  <header class="head"><div><h1>Y16 / Y8 本地图像查看器</h1><p class="muted">选择一帧，调整亮度、Gamma和灰度范围。</p></div><span class="badge">离线使用 · 文件不上传</span></header>
+  <section id="dropZone" class="drop" aria-label="文件拖放区域"><div><strong>把 RAW / BIN 文件拖到这里</strong><span class="muted">支持连续50帧文件、单帧文件，也支持同时拖入多张RAW。</span></div><button id="choose" class="primary" type="button">选择文件</button><input id="fileInput" type="file" multiple accept=".bin,.raw,.dat,.y8,.y16,.x16" hidden></section>
+  <div class="row format"><label>输入格式 <select id="format" aria-label="输入格式"><option value="auto">自动判断</option><option value="u8">Y8 · 8位无符号</option><option value="u16le">Y16 · 16位小端</option><option value="u16be">Y16 · 16位大端</option></select></label><div class="endian-controls" role="group" aria-label="Y16字节序"><button id="endianLE" type="button" aria-pressed="false">Y16 小端（LE）</button><button id="endianBE" type="button" aria-pressed="false">Y16 大端（BE）</button><span class="muted">Y8无需设置</span></div><label>宽 <input id="width" type="number" value="640" min="1" max="8192" step="1" aria-label="图像宽度"></label><label>高 <input id="height" type="number" value="512" min="1" max="8192" step="1" aria-label="图像高度"></label><button id="apply" type="button">应用格式</button></div>
+  <details><summary>文件头与加载顺序</summary><div class="row"><label for="headerBytes">每个文件跳过头字节</label><input id="headerBytes" type="number" value="0" min="0" step="1"><span class="muted">默认无文件头；多个文件按文件名中的数字顺序排列，不跨文件拼接残帧。</span></div><ol id="fileList" class="file-list"></ol></details>
+  <div id="fileStatus" class="status" aria-live="polite">尚未加载文件。默认640×512，帧号从1开始。</div>
+  <div id="error" class="status" role="alert" hidden></div><div id="warning" class="status" hidden></div>
+  <div class="layout">
+    <aside class="controls">
+      <section class="group frame-group"><div class="group-title">选择帧</div><div class="frame-nav"><input id="frameNumber" type="number" value="1" min="1" max="1" step="1" aria-label="帧号" disabled><span id="frameTotal">/ 0</span><button id="frameJump" type="button" disabled>跳转</button></div><input id="frameSlider" type="range" min="1" max="1" value="1" step="1" aria-label="帧滑条" disabled><div class="row"><button id="prev" type="button" disabled aria-label="上一帧">←</button><button id="next" type="button" disabled aria-label="下一帧">→</button><button id="play" type="button" disabled>播放</button><select id="fps" aria-label="播放帧率"><option value="5">5 fps</option><option value="10" selected>10 fps</option><option value="20">20 fps</option><option value="50">50 fps</option></select></div><p class="note">输入帧号后按回车或“跳转”。加载默认末帧，避开启动黑帧。</p></section>
+      <section class="group"><div class="value-row"><label for="brightness"><b>亮度偏移</b></label><input id="brightnessNumber" type="number" min="-128" max="128" step="1" value="0" aria-label="亮度数值"></div><input id="brightness" type="range" min="-128" max="128" step="1" value="0" aria-label="亮度偏移"><p class="note">单位为显示灰度，正值提亮。</p></section>
+      <section class="group"><div class="value-row"><label for="gamma"><b>Gamma</b></label><input id="gammaNumber" type="number" min="0.1" max="5" step="0.05" value="1" aria-label="Gamma数值"></div><input id="gamma" type="range" min="0.1" max="5" step="0.05" value="1" aria-label="Gamma"><p class="note">Gamma大于1提亮，小于1压暗。</p></section>
+      <section class="group"><div class="group-title">灰度拉伸</div><div class="limits"><label>黑场值<input id="low" type="number" min="0" max="65535" step="1" value="0" aria-label="黑场值"></label><label>白场值<input id="high" type="number" min="1" max="65535" step="1" value="255" aria-label="白场值"></label></div><div class="row" style="margin-top:10px"><button id="autoStretch" type="button" disabled>自动拉伸 1%～99%</button><button id="fullRange" type="button">原始范围</button><button id="range14" type="button" disabled>14位范围</button></div><p class="note">自动拉伸只计算当前帧，切帧时保持范围。</p></section>
+      <section class="group"><button id="reset" type="button">重置全部显示参数</button><p class="note">调整只作用于右侧显示，原文件保持不变。</p></section>
+    </aside>
+    <section class="stage" aria-label="图像预览">
+      <div class="zoom-toolbar" role="group" aria-label="像素缩放"><span class="muted">查看倍率</span><button type="button" data-zoom="fit" aria-pressed="true">适应</button><button type="button" data-zoom="1" aria-pressed="false">1:1</button><button type="button" data-zoom="2" aria-pressed="false">2×</button><button type="button" data-zoom="4" aria-pressed="false">4×</button><button type="button" data-zoom="8" aria-pressed="false">8×</button><button type="button" data-zoom="16" aria-pressed="false">16×</button><button id="centerView" type="button">回到中心</button><button id="openLarge" type="button" disabled>大窗口查看</button></div>
+      <p id="zoomInfo" class="zoom-note">1:1及整数倍按像素显示；拖动平移，滚轮缩放，双击某点放大居中。</p>
+      <div class="images"><article class="image-panel"><div class="image-label"><strong>原始预览</strong><span id="nativeRange">Y8 · 0～255</span></div><div class="canvas-space"><canvas id="original" width="640" height="512" aria-label="原始灰度图"></canvas><div class="placeholder">加载文件后显示原始位宽范围</div></div></article><article class="image-panel"><div class="image-label"><strong>调整后预览</strong><span id="adjustedRange">Gamma 1 · 亮度 0</span></div><div class="canvas-space"><canvas id="adjusted" width="640" height="512" aria-label="调整后的灰度图"></canvas><div class="placeholder">亮度、Gamma和拉伸效果显示在这里</div></div></article></div>
+      <div id="stats" class="stats" aria-live="off"><span>最小 <b id="minStat">—</b></span><span>最大 <b id="maxStat">—</b></span><span>平均 <b id="meanStat">—</b></span><span>1% / 99% <b id="percentStat">—</b></span></div>
+      <div id="frameMeta" class="meta">—</div><div id="pixel" class="pixel">移动鼠标可查看像素坐标和原始数值（坐标从1开始）。</div>
+      <div class="row actions"><button id="saveRaw" type="button" disabled>导出原始帧 RAW</button><button id="savePng" type="button" disabled>保存调整后 PNG</button><button id="saveY8" type="button" disabled>导出显示 Y8 RAW</button></div>
+      <p id="domainNote" class="note">Y8每像素1字节，Y16每像素2字节；文件内按逐行顺序排列。</p>
+    </section>
+  </div>
+  <footer class="footer">072 · 双击HTML即可使用，无需安装或联网。<span class="key">←</span> <span class="key">→</span> 切帧，<span class="key">空格</span> 播放/暂停；编辑输入框时快捷键不生效。</footer>
+  <dialog id="largeDialog" class="large-dialog" aria-labelledby="largeTitle"><div class="large-shell">
+    <div class="large-head"><h2 id="largeTitle">像素放大预览</h2><span id="largeFrameLabel" class="large-frame-label">尚未加载文件</span><button id="closeLarge" type="button">关闭大窗口</button></div>
+    <div class="large-controls"><label>图像<select id="largeSource" aria-label="大窗口显示图像"><option value="adjusted">调整后</option><option value="original">原始预览</option></select></label><label>倍率<select id="largeZoom" aria-label="大窗口放大倍数"><option value="fit">适应</option><option value="1">1:1</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option></select></label><button id="largeCenter" type="button">回到中心</button><button id="largePrev" type="button" aria-label="大窗口上一帧">←</button><button id="largePlay" type="button">播放</button><button id="largeNext" type="button" aria-label="大窗口下一帧">→</button><select id="largeFps" aria-label="大窗口播放帧率"><option value="5">5 fps</option><option value="10" selected>10 fps</option><option value="20">20 fps</option><option value="50">50 fps</option></select><label>帧号<input id="largeFrameNumber" type="number" min="1" step="1" value="1" aria-label="大窗口帧号"></label><button id="largeJump" type="button">跳转帧</button></div>
+    <div id="largeViewport" class="canvas-space pixel-view large-view"><canvas id="largeCanvas" width="640" height="512" aria-label="像素级放大图像"></canvas></div>
+    <div class="large-foot"><div id="largeViewInfo">拖动平移，滚轮缩放；播放时保持当前观察位置。</div><div id="largePixel">移动鼠标查看像素数值。</div><p class="zoom-note">1:1＝一个图像像素对应一个CSS显示像素；整数倍最近邻显示，不做平滑插值。导出分辨率不受缩放影响。</p></div>
+  </div></dialog>
+</main>
+<script id="pixel-core">
+/* 纯整数读帧与显示映射；不对输入数据做算法预处理。 */
+const RawCore = (() => {
+  function geometry(width,height) {
+    if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||width>8192||height>8192||width*height>16777216) throw new Error('请输入有效的宽、高（正整数，合计不超过16777216像素）。');
+    return width*height;
+  }
+  function inferFormat(files,pixels,header=0) {
+    const names=files.map(f=>f.name.toLowerCase());
+    const has8=names.some(n=>/(?:^|[^a-z0-9])(?:y8|uint8|u8)(?:[^a-z0-9]|$)/.test(n));
+    const has16=names.some(n=>/(?:^|[^a-z0-9])(?:y16|x16|uint16|u16)(?:[^a-z0-9]|$)/.test(n));
+    if(has8&&has16) throw new Error('同时选中了Y8和Y16文件，请分开加载。');
+    if(has8) return {format:'u8',reason:'根据文件名判断Y8，可手动更改'};
+    if(has16) return {format:'u16le',reason:'根据文件名判断Y16小端，可手动更改'};
+    const votes=files.map(f=>{const n=f.size-header;if(n===pixels||n===pixels*50)return 1;if(n===pixels*2||n===pixels*100)return 2;return 0;}).filter(Boolean);
+    if(votes.includes(1)&&votes.includes(2))throw new Error('文件大小对应的位宽不一致，请分开加载或手动指定输入格式。');
+    if(votes.length)return {format:votes[0]===1?'u8':'u16le',reason:'按单帧或连续50帧的文件大小推测，可手动更改'};
+    const fit8=files.every(f=>(f.size-header)>0&&(f.size-header)%pixels===0);
+    const fit16=files.every(f=>(f.size-header)>0&&(f.size-header)%(pixels*2)===0);
+    if(fit8&&!fit16)return {format:'u8',reason:'按完整帧大小推测Y8，可手动更改'};
+    throw new Error('无法唯一判断Y8/Y16。请在“输入格式”中手动选择位宽和字节序，再点“应用格式”。');
+  }
+  function plan(files,pixels,format,header=0) {
+    if(!Number.isSafeInteger(header)||header<0)throw new Error('文件头字节数必须是非负整数。');
+    if(!['u8','u16le','u16be'].includes(format))throw new Error('输入格式无效。');
+    const frameBytes=pixels*(format==='u8'?1:2);let total=0;const segments=[],trailing=[];
+    for(const f of files){const available=f.size-header;if(available<frameBytes)throw new Error(`文件“${f.name}”不足一帧：跳过文件头后${Math.max(0,available)}字节，需要${frameBytes}字节。请检查宽高和输入格式。`);const count=Math.floor(available/frameBytes);segments.push({file:f,first:total+1,count,header});total+=count;if(available%frameBytes)trailing.push({name:f.name,bytes:available%frameBytes});}
+    return {segments,total,frameBytes,trailing,format};
+  }
+  function locate(plan,frame) {
+    if(!Number.isInteger(frame)||frame<1||frame>plan.total)throw new Error(`帧号应为1～${plan.total}。`);
+    const s=plan.segments.find(s=>frame>=s.first&&frame<s.first+s.count);const local=frame-s.first+1;
+    return {file:s.file,offset:s.header+(local-1)*plan.frameBytes,local};
+  }
+  function decode(buffer,pixels,format) {
+    const expected=pixels*(format==='u8'?1:2);if(buffer.byteLength!==expected)throw new Error('读取到的帧字节数不完整。');
+    if(format==='u8')return new Uint8Array(buffer);
+    const out=new Uint16Array(pixels),v=new DataView(buffer);for(let i=0;i<pixels;i++)out[i]=v.getUint16(i*2,format==='u16le');return out;
+  }
+  function stats(values,max) {
+    const hist=new Uint32Array(max+1);let sum=0,min=max,peak=0;
+    for(let i=0;i<values.length;i++){const x=values[i];hist[x]++;sum+=x;if(x<min)min=x;if(x>peak)peak=x;}
+    function percentile(p){const rank=Math.max(1,Math.ceil(values.length*p));let seen=0;for(let i=0;i<hist.length;i++){seen+=hist[i];if(seen>=rank)return i;}return max;}
+    return {min,max:peak,mean:sum/values.length,p01:percentile(.01),p99:percentile(.99)};
+  }
+  function stretchBounds(stats,max) {
+    let low=stats.p01,high=stats.p99;
+    if(high<=low){if(stats.max>stats.min){low=stats.min;high=stats.max;}else{low=Math.max(0,stats.min-1);high=Math.min(max,stats.max+1);}}
+    return {low,high};
+  }
+  function table(max,low,high,gamma,brightness) {
+    if(!Number.isFinite(low)||!Number.isFinite(high)||low<0||high>max||low>=high)throw new Error(`黑场值必须小于白场值，范围为0～${max}。`);
+    if(!Number.isFinite(gamma)||gamma<.1||gamma>5)throw new Error('Gamma范围为0.1～5。');
+    if(!Number.isFinite(brightness)||brightness< -128||brightness>128)throw new Error('亮度范围为-128～128。');
+    const lut=new Uint8Array(max+1);for(let i=0;i<=max;i++){const u=Math.max(0,Math.min(1,(i-low)/(high-low)));lut[i]=Math.max(0,Math.min(255,Math.round(255*Math.pow(u,1/gamma)+brightness)));}return lut;
+  }
+  return {geometry,inferFormat,plan,locate,decode,stats,stretchBounds,table};
+})();
+</script>
+<script id="view-core">
+/* 原始像素缓冲始终不缩放；以下只计算预览画布的位置和CSS尺寸。 */
+const ViewCore=(()=>{
+  const levels=['fit','1','2','4','8','16'];
+  const clamp=(x,lo,hi)=>Math.max(lo,Math.min(hi,x));
+  function layout(w,h,vw,vh,mode,cx,cy){
+    const scale=mode==='fit'?Math.min(1,vw/w,vh/h):Number(mode);
+    if(!levels.includes(String(mode))||!Number.isFinite(scale)||scale<=0||vw<=0||vh<=0)throw new Error('无效的预览尺寸或倍率。');
+    const left=Math.round(mode==='fit'||w*scale<=vw?(vw-w*scale)/2:vw/2-(cx+.5)*scale);
+    const top=Math.round(mode==='fit'||h*scale<=vh?(vh-h*scale)/2:vh/2-(cy+.5)*scale);
+    return {scale,left,top,width:w*scale,height:h*scale};
+  }
+  function point(l,x,y){return {x:(x-l.left)/l.scale-.5,y:(y-l.top)/l.scale-.5};}
+  function anchor(l,x,y,newScale,vw,vh,w,h){const p=point(l,x,y);return {cx:clamp(p.x+(vw/2-x)/newScale,0,w-1),cy:clamp(p.y+(vh/2-y)/newScale,0,h-1)};}
+  function pan(cx,cy,dx,dy,scale,w,h){return {cx:clamp(cx-dx/scale,0,w-1),cy:clamp(cy-dy/scale,0,h-1)};}
+  function step(mode,direction){return levels[clamp(levels.indexOf(String(mode))+(direction>0?1:-1),0,levels.length-1)];}
+  return {levels,layout,point,anchor,pan,step,clamp};
+})();
+</script>
+<script id="viewer-ui">
+(() => {
+  'use strict';
+  const $=id=>document.getElementById(id),E={};for(const id of ['dropZone','choose','fileInput','format','endianLE','endianBE','width','height','headerBytes','apply','fileList','fileStatus','error','warning','prev','next','frameNumber','frameJump','frameSlider','frameTotal','play','fps','brightness','brightnessNumber','gamma','gammaNumber','low','high','autoStretch','fullRange','range14','reset','original','adjusted','nativeRange','adjustedRange','minStat','maxStat','meanStat','percentStat','frameMeta','pixel','saveRaw','savePng','saveY8','domainNote'])E[id]=$(id);
+  for(const id of ['centerView','openLarge','zoomInfo','largeDialog','closeLarge','largeSource','largeZoom','largeCenter','largePrev','largeNext','largePlay','largeFps','largeFrameNumber','largeJump','largeFrameLabel','largeViewport','largeCanvas','largeViewInfo','largePixel'])E[id]=$(id);
+  const S={files:[],plan:null,width:640,height:512,max:255,frame:1,values:null,raw:null,mapped:null,stats:null,token:0,playing:false,timer:null,dragDepth:0,loading:false,location:null};
+  const V={mode:'fit',cx:319.5,cy:255.5,width:640,height:512,drag:null};
+  const zoomButtons=Array.from(document.querySelectorAll('[data-zoom]'));
+  const context={original:E.original.getContext('2d',{alpha:false}),adjusted:E.adjusted.getContext('2d',{alpha:false}),large:E.largeCanvas.getContext('2d',{alpha:false})};
+  const viewports=[{canvas:E.original,box:E.original.parentElement},{canvas:E.adjusted,box:E.adjusted.parentElement},{canvas:E.largeCanvas,box:E.largeViewport}];
+  function syncViewSize(){if(V.width!==S.width||V.height!==S.height){V.width=S.width;V.height=S.height;V.cx=(S.width-1)/2;V.cy=(S.height-1)/2;V.mode='fit';}}
+  function viewLayout(item){const l=ViewCore.layout(S.width,S.height,item.box.clientWidth,item.box.clientHeight,V.mode,V.cx,V.cy),r=item.box.getBoundingClientRect(),dpr=window.devicePixelRatio||1,ox=r.left+item.box.clientLeft,oy=r.top+item.box.clientTop;l.left=Math.round((ox+l.left)*dpr)/dpr-ox;l.top=Math.round((oy+l.top)*dpr)/dpr-oy;return l;}
+  function renderViews(){
+    syncViewSize();
+    for(const item of viewports){if(!item.box.clientWidth||!item.box.clientHeight)continue;const l=viewLayout(item);item.canvas.style.width=l.width+'px';item.canvas.style.height=l.height+'px';item.canvas.style.left=l.left+'px';item.canvas.style.top=l.top+'px';}
+    for(const b of zoomButtons){b.setAttribute('aria-pressed',String(b.dataset.zoom===V.mode));b.disabled=!S.values;}
+    E.largeZoom.value=V.mode;
+    const scaleLabel=V.mode==='fit'?'适应窗口':V.mode==='1'?'1:1':V.mode+'×';
+    const note=`${scaleLabel} · 观察中心 x=${Math.round(V.cx)+1}，y=${Math.round(V.cy)+1} · 拖动平移，滚轮缩放；切帧/播放保持位置`;
+    E.zoomInfo.textContent=note;E.largeViewInfo.textContent=note;
+  }
+  function centerView(){V.cx=(S.width-1)/2;V.cy=(S.height-1)/2;renderViews();}
+  function setZoom(mode){if(!S.values)return;V.mode=mode;renderViews();}
+  function redrawLarge(){
+    if(!E.largeDialog.open)return;
+    E.largeCanvas.width=S.width;E.largeCanvas.height=S.height;
+    if(!S.values)return;
+    if(E.largeSource.value==='original')draw(E.largeCanvas,context.large,S.values,RawCore.table(S.max,0,S.max,1,0));
+    else if(S.mapped)draw(E.largeCanvas,context.large,S.mapped,RawCore.table(255,0,255,1,0));
+    else E.largePixel.textContent='显示参数无效，请关闭大窗口后检查参数。';
+    renderViews();
+  }
+  function largeControls(){
+    const loaded=!!S.plan;E.largePrev.disabled=!loaded||S.frame<=1;E.largeNext.disabled=!loaded||S.frame>=S.plan.total;E.largePlay.disabled=!loaded||S.plan.total<2;E.largeFrameNumber.disabled=E.largeJump.disabled=!loaded;
+    E.largeFrameNumber.value=S.frame;E.largeFrameNumber.max=loaded?S.plan.total:1;E.largeFps.value=E.fps.value;E.largePlay.textContent=S.playing?'暂停':'播放';
+    E.largeFrameLabel.textContent=loaded?`第 ${S.frame} / ${S.plan.total} 帧 · ${S.location?S.location.file.name:''}`:'尚未加载文件';
+  }
+  function message(id,text){E[id].textContent=text;E[id].hidden=!text;}
+  function error(e){const text=e.message||String(e);message('error',text);if(E.largeDialog.open){E.largePixel.textContent=text;E.largePixel.classList.add('large-error');}}
+  function syncEndian(){const fmt=S.plan?S.plan.format:E.format.value;E.endianLE.disabled=E.endianBE.disabled=fmt==='u8'||S.loading;E.endianLE.setAttribute('aria-pressed',String(fmt==='u16le'));E.endianBE.setAttribute('aria-pressed',String(fmt==='u16be'));}
+  function enabled(){const ok=!!S.values&&!S.loading;for(const id of ['saveRaw','savePng','saveY8','autoStretch'])E[id].disabled=!ok;const loaded=!!S.plan;E.frameNumber.disabled=E.frameSlider.disabled=E.frameJump.disabled=!loaded;E.prev.disabled=!loaded||S.frame<=1;E.next.disabled=!loaded||S.frame>=S.plan.total;E.play.disabled=!loaded||S.plan.total<2;E.range14.disabled=!loaded||S.max===255;E.openLarge.disabled=!ok||!S.mapped;E.centerView.disabled=!S.values;syncEndian();largeControls();}
+  function stop(){S.playing=false;clearTimeout(S.timer);S.timer=null;E.play.textContent=E.largePlay.textContent='播放';}
+  function controls(){E.frameNumber.value=E.frameSlider.value=String(S.frame);if(S.plan){E.frameNumber.max=E.frameSlider.max=String(S.plan.total);E.frameTotal.textContent='/ '+S.plan.total;}else{E.frameNumber.max=E.frameSlider.max='1';E.frameTotal.textContent='/ 0';}enabled();renderViews();}
+  function clearFrame(){S.values=null;S.raw=null;S.mapped=null;S.stats=null;S.location=null;document.body.classList.remove('ready');document.querySelectorAll('.placeholder').forEach(e=>e.hidden=false);for(const k of ['minStat','maxStat','meanStat','percentStat'])E[k].textContent='—';E.frameMeta.textContent='—';for(const k of ['original','adjusted'])context[k].clearRect(0,0,E[k].width,E[k].height);context.large.clearRect(0,0,E.largeCanvas.width,E.largeCanvas.height);enabled();}
+  function resetParams(){E.low.value='0';E.high.value=String(S.max);E.high.max=E.low.max=String(S.max);E.gamma.value=E.gammaNumber.value='1';E.brightness.value=E.brightnessNumber.value='0';}
+  function draw(canvas,ctx,values,lut){ctx.imageSmoothingEnabled=false;const img=ctx.createImageData(S.width,S.height),p=img.data;for(let i=0;i<values.length;i++){const v=lut[values[i]],j=i*4;p[j]=p[j+1]=p[j+2]=v;p[j+3]=255;}ctx.putImageData(img,0,0);}
+  function renderAdjusted(){if(!S.values)return false;try{const low=Number(E.low.value),high=Number(E.high.value),gamma=Number(E.gammaNumber.value),brightness=Number(E.brightnessNumber.value);if(!E.low.value||!E.high.value)throw new Error('请填写黑场值和白场值。');const lut=RawCore.table(S.max,low,high,gamma,brightness);draw(E.adjusted,context.adjusted,S.values,lut);S.mapped=new Uint8Array(S.values.length);for(let i=0;i<S.values.length;i++)S.mapped[i]=lut[S.values[i]];E.adjustedRange.textContent=`${low}～${high} · Gamma ${gamma} · 亮度 ${brightness}`;message('error','');redrawLarge();renderViews();return true;}catch(e){S.mapped=null;redrawLarge();error(e);return false;}}
+  function autoStretch(){if(!S.stats)return;const b=RawCore.stretchBounds(S.stats,S.max);E.low.value=b.low;E.high.value=b.high;renderAdjusted();}
+  async function loadFrame(number,autostretch=false){
+    if(!S.plan)return false;const token=++S.token;S.loading=true;enabled();
+    try{const n=Number(number),loc=RawCore.locate(S.plan,n),bytes=await loc.file.slice(loc.offset,loc.offset+S.plan.frameBytes).arrayBuffer();if(token!==S.token)return false;
+      const values=RawCore.decode(bytes,S.width*S.height,S.plan.format);S.frame=n;S.values=values;S.raw=bytes;S.location=loc;S.stats=RawCore.stats(values,S.max);
+      for(const k of ['original','adjusted']){E[k].width=S.width;E[k].height=S.height;}
+      draw(E.original,context.original,values,RawCore.table(S.max,0,S.max,1,0));
+      if(autostretch){const b=RawCore.stretchBounds(S.stats,S.max);E.low.value=b.low;E.high.value=b.high;}
+      renderAdjusted();document.querySelectorAll('.placeholder').forEach(e=>e.hidden=true);document.body.classList.add('ready');
+      E.minStat.textContent=S.stats.min;E.maxStat.textContent=S.stats.max;E.meanStat.textContent=S.stats.mean.toFixed(3);E.percentStat.textContent=`${S.stats.p01} / ${S.stats.p99}`;
+      E.frameMeta.textContent=`第 ${n} / ${S.plan.total} 帧 · ${loc.file.name} · 文件内第 ${loc.local} 帧 · 字节偏移 ${loc.offset.toLocaleString('en-US')} · 本帧 ${S.plan.frameBytes.toLocaleString('en-US')} 字节`;
+      E.pixel.textContent='移动鼠标可查看像素坐标和原始数值（坐标从1开始）。';E.largePixel.classList.remove('large-error');E.largePixel.textContent='移动鼠标查看像素数值。';return true;
+    }catch(e){if(token===S.token){stop();error(e);}return false;}finally{if(token===S.token){S.loading=false;controls();}}
+  }
+  async function configure(){
+    stop();++S.token;S.plan=null;clearFrame();controls();message('error','');message('warning','');if(!S.files.length)return;
+    try{const w=Number(E.width.value),h=Number(E.height.value),pixels=RawCore.geometry(w,h),head=Number(E.headerBytes.value);if(!Number.isSafeInteger(head)||head<0)throw new Error('文件头字节数必须是非负整数。');
+      const mode=E.format.value==='auto'?RawCore.inferFormat(S.files,pixels,head):{format:E.format.value,reason:'手动指定'};
+      const plan=RawCore.plan(S.files,pixels,mode.format,head);S.width=w;S.height=h;S.plan=plan;S.max=mode.format==='u8'?255:65535;S.frame=plan.total;resetParams();controls();
+      const label=mode.format==='u8'?'Y8':mode.format==='u16le'?'Y16小端':'Y16大端';E.nativeRange.textContent=`${label} · 0～${S.max}`;
+      E.fileStatus.textContent=`${S.files.length} 个文件 · ${w}×${h} · ${label} · 共 ${plan.total} 帧 · ${mode.reason}`;
+      E.domainNote.textContent=mode.format==='u8'?'左侧是真实Y8（0～255）；右侧是查看用的显示调整。':'左侧按16位容器0～65535预览；右侧首次加载采用当前末帧1%～99%拉伸。可点击14位范围查看0～16383。';
+      if(plan.trailing.length)message('warning',plan.trailing.map(x=>`${x.name}末尾${x.bytes}字节不足一帧，未显示`).join('；')+'。请确认输入格式、宽高和文件头。');
+      await loadFrame(plan.total,mode.format!=='u8');
+    }catch(e){E.fileStatus.textContent='未能按当前格式读取文件，请检查下面的提示。';error(e);}
+  }
+  async function acceptFiles(list){
+    const files=Array.from(list||[]);if(!files.length)return;
+    // 浏览器可能把探测器.raw标成image/x-panasonic-raw，不能按image/*一概拒绝。
+    if(files.some(f=>/\.(png|jpe?g|bmp|gif|webp|avif|tiff?|html?)$/i.test(f.name))){error(new Error('这里需要Y8/Y16的RAW或BIN数据，请选择原始二进制文件。'));return;}
+    const collator=new Intl.Collator('zh-CN',{numeric:true});S.files=files.sort((a,b)=>collator.compare(a.name,b.name));E.fileList.replaceChildren();
+    for(const f of S.files){const li=document.createElement('li');li.textContent=f.name+' · '+f.size.toLocaleString('en-US')+' 字节';E.fileList.appendChild(li);}await configure();
+  }
+  E.choose.addEventListener('click',()=>E.fileInput.click());E.fileInput.addEventListener('change',()=>{acceptFiles(E.fileInput.files);E.fileInput.value='';});
+  document.addEventListener('dragover',e=>{e.preventDefault();});document.addEventListener('drop',e=>{e.preventDefault();S.dragDepth=0;E.dropZone.classList.remove('dragging');acceptFiles(e.dataTransfer.files);});
+  E.dropZone.addEventListener('dragenter',e=>{e.preventDefault();S.dragDepth++;E.dropZone.classList.add('dragging');});E.dropZone.addEventListener('dragleave',()=>{S.dragDepth=Math.max(0,S.dragDepth-1);if(!S.dragDepth)E.dropZone.classList.remove('dragging');});
+  // 只改变16位字节解释方式，保持当前帧、亮度与Gamma；范围按当前帧重新拉伸。
+  async function selectEndian(format){
+    stop();E.format.value=format;
+    if(!S.plan){await configure();return;}
+    if(S.plan.format===format){syncEndian();return;}
+    S.plan.format=format;const label=format==='u16le'?'Y16小端':'Y16大端';
+    E.nativeRange.textContent=`${label} · 0～65535`;
+    E.fileStatus.textContent=`${S.files.length} 个文件 · ${S.width}×${S.height} · ${label} · 共 ${S.plan.total} 帧 · 手动选择字节序`;
+    await loadFrame(S.frame,true);
+  }
+  E.endianLE.addEventListener('click',()=>selectEndian('u16le'));E.endianBE.addEventListener('click',()=>selectEndian('u16be'));
+  E.apply.addEventListener('click',configure);E.format.addEventListener('change',()=>{if(S.plan&&S.plan.format!=='u8'&&['u16le','u16be'].includes(E.format.value))selectEndian(E.format.value);else configure();});
+  for(const id of ['width','height','headerBytes'])E[id].addEventListener('keydown',e=>{if(e.key==='Enter')configure();});
+  function chooseFrame(n){stop();loadFrame(n);}
+  E.frameJump.addEventListener('click',()=>chooseFrame(Number(E.frameNumber.value)));E.frameNumber.addEventListener('keydown',e=>{if(e.key==='Enter')chooseFrame(Number(E.frameNumber.value));});E.frameSlider.addEventListener('input',()=>chooseFrame(Number(E.frameSlider.value)));
+  E.prev.addEventListener('click',()=>chooseFrame(S.frame-1));E.next.addEventListener('click',()=>chooseFrame(S.frame+1));
+  async function tick(){if(!S.playing||!S.plan)return;const start=performance.now();await loadFrame(S.frame>=S.plan.total?1:S.frame+1);if(S.playing)S.timer=setTimeout(tick,Math.max(0,1000/Number(E.fps.value)-(performance.now()-start)));}
+  function togglePlay(){if(S.playing){stop();return;}if(!S.plan||S.plan.total<2)return;S.playing=true;E.play.textContent=E.largePlay.textContent='暂停';tick();}
+  E.play.addEventListener('click',togglePlay);
+  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey||!S.plan)return;if(e.code==='Space'){e.preventDefault();togglePlay();}else if(e.key==='ArrowLeft'){e.preventDefault();chooseFrame(Math.max(1,S.frame-1));}else if(e.key==='ArrowRight'){e.preventDefault();chooseFrame(Math.min(S.plan.total,S.frame+1));}});
+  for(const k of ['brightness','gamma']){
+    E[k].addEventListener('input',()=>{E[k+'Number'].value=E[k].value;renderAdjusted();});
+    E[k+'Number'].addEventListener('input',()=>{if(!E[k+'Number'].value)return;E[k].value=E[k+'Number'].value;renderAdjusted();});
+  }
+  for(const k of ['low','high'])E[k].addEventListener('input',renderAdjusted);
+  E.autoStretch.addEventListener('click',autoStretch);E.fullRange.addEventListener('click',()=>{E.low.value='0';E.high.value=S.max;renderAdjusted();});E.range14.addEventListener('click',()=>{E.low.value='0';E.high.value='16383';renderAdjusted();});
+  E.reset.addEventListener('click',()=>{resetParams();renderAdjusted();});
+  for(const id of ['original','adjusted'])E[id].addEventListener('mousemove',e=>{if(!S.values)return;const rect=E[id].getBoundingClientRect(),x=Math.max(0,Math.min(S.width-1,Math.floor((e.clientX-rect.left)*S.width/rect.width))),y=Math.max(0,Math.min(S.height-1,Math.floor((e.clientY-rect.top)*S.height/rect.height))),i=y*S.width+x;E.pixel.textContent=`x=${x+1}，y=${y+1} · 原始值 ${S.values[i]} · 调整后Y8 ${S.mapped?S.mapped[i]:'参数无效'}`;});
+  function stem(){return (S.location.file.name.replace(/\.[^.]*$/,'').replace(/[<>:"/\\|?*]/g,'_'))+'_frame'+String(S.frame).padStart(3,'0');}
+  function download(blob,name){const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  E.saveRaw.addEventListener('click',()=>{if(S.raw)download(new Blob([S.raw],{type:'application/octet-stream'}),stem()+'_'+S.plan.format+'.raw');});
+  E.saveY8.addEventListener('click',()=>{if(S.values&&renderAdjusted())download(new Blob([S.mapped],{type:'application/octet-stream'}),stem()+'_display_Y8.raw');});
+  E.savePng.addEventListener('click',()=>{if(S.values&&renderAdjusted()){const name=stem()+'_display.png';E.adjusted.toBlob(blob=>{if(blob)download(blob,name);else error(new Error('PNG导出失败，请重试。'));},'image/png');}});
+  // 三个预览窗共享同一个源像素中心，缩放和平移不会改写图像缓冲。
+  for(const b of zoomButtons)b.addEventListener('click',()=>setZoom(b.dataset.zoom));
+  E.centerView.addEventListener('click',centerView);E.largeCenter.addEventListener('click',centerView);
+  E.openLarge.addEventListener('click',()=>{if(!S.values)return;E.largeDialog.showModal();redrawLarge();largeControls();requestAnimationFrame(renderViews);});
+  E.closeLarge.addEventListener('click',()=>E.largeDialog.close());E.largeDialog.addEventListener('close',()=>{V.drag=null;renderViews();});
+  E.largeSource.addEventListener('change',redrawLarge);E.largeZoom.addEventListener('change',()=>setZoom(E.largeZoom.value));
+  E.largePlay.addEventListener('click',togglePlay);E.largePrev.addEventListener('click',()=>chooseFrame(S.frame-1));E.largeNext.addEventListener('click',()=>chooseFrame(S.frame+1));
+  E.largeFps.addEventListener('change',()=>{E.fps.value=E.largeFps.value;});E.fps.addEventListener('change',()=>{E.largeFps.value=E.fps.value;});
+  E.largeJump.addEventListener('click',()=>chooseFrame(Number(E.largeFrameNumber.value)));E.largeFrameNumber.addEventListener('keydown',e=>{if(e.key==='Enter')chooseFrame(Number(E.largeFrameNumber.value));});E.largeFrameNumber.addEventListener('focus',stop);
+  for(const item of viewports){
+    item.box.classList.add('pixel-view');
+    item.box.addEventListener('pointerdown',e=>{if(!S.values||e.button!==0||V.mode==='fit')return;const l=viewLayout(item);V.drag={id:e.pointerId,box:item.box,x:e.clientX,y:e.clientY,cx:V.cx,cy:V.cy,scale:l.scale};item.box.setPointerCapture(e.pointerId);item.box.classList.add('dragging');e.preventDefault();});
+    item.box.addEventListener('pointermove',e=>{if(V.drag&&V.drag.box===item.box&&V.drag.id===e.pointerId){const p=ViewCore.pan(V.drag.cx,V.drag.cy,e.clientX-V.drag.x,e.clientY-V.drag.y,V.drag.scale,S.width,S.height);V.cx=p.cx;V.cy=p.cy;renderViews();}});
+    const finish=e=>{if(V.drag&&V.drag.box===item.box&&V.drag.id===e.pointerId){V.drag=null;item.box.classList.remove('dragging');if(item.box.hasPointerCapture(e.pointerId))item.box.releasePointerCapture(e.pointerId);}};
+    item.box.addEventListener('pointerup',finish);item.box.addEventListener('pointercancel',finish);
+    item.box.addEventListener('wheel',e=>{if(!S.values)return;e.preventDefault();const mode=ViewCore.step(V.mode,e.deltaY<0?1:-1);if(mode===V.mode)return;const rect=item.box.getBoundingClientRect(),l=viewLayout(item);if(mode!=='fit'){const p=ViewCore.anchor(l,e.clientX-rect.left-item.box.clientLeft,e.clientY-rect.top-item.box.clientTop,Number(mode),item.box.clientWidth,item.box.clientHeight,S.width,S.height);V.cx=p.cx;V.cy=p.cy;}V.mode=mode;renderViews();},{passive:false});
+    item.box.addEventListener('dblclick',e=>{if(!S.values)return;const rect=item.box.getBoundingClientRect(),p=ViewCore.point(viewLayout(item),e.clientX-rect.left-item.box.clientLeft,e.clientY-rect.top-item.box.clientTop);V.cx=ViewCore.clamp(p.x,0,S.width-1);V.cy=ViewCore.clamp(p.y,0,S.height-1);if(V.mode==='fit'||V.mode==='1')V.mode='2';renderViews();});
+  }
+  E.largeCanvas.addEventListener('pointermove',e=>{if(!S.values)return;const r=E.largeCanvas.getBoundingClientRect(),x=ViewCore.clamp(Math.floor((e.clientX-r.left)*S.width/r.width),0,S.width-1),y=ViewCore.clamp(Math.floor((e.clientY-r.top)*S.height/r.height),0,S.height-1),i=y*S.width+x;const shown=E.largeSource.value==='original'?Math.round(S.values[i]*255/S.max):S.mapped?S.mapped[i]:'参数无效';E.largePixel.textContent=`x=${x+1}，y=${y+1} · 原始值 ${S.values[i]} · 当前显示Y8 ${shown}`;});
+  const resize=new ResizeObserver(()=>renderViews());for(const item of viewports)resize.observe(item.box);
+  controls();
+})();
+</script>
+</body></html>

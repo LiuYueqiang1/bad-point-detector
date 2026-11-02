@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>YUY2 连续帧 · Y / UV 分离工具</title>
+<style>
+:root{--ink:#172b36;--muted:#60737b;--line:#dbe3e5;--paper:#fff;--bg:#f2f5f5;--accent:#12685f;--soft:#e8f3ef;--warn:#805214;--warnbg:#fff5df;--bad:#a32f2f}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.65 "Segoe UI","Microsoft YaHei",sans-serif}main{max-width:1100px;margin:auto;padding:36px 28px 45px}header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:26px}.eyebrow{font-size:12px;letter-spacing:2px;color:var(--accent);font-weight:700}h1{font-size:30px;letter-spacing:-1px;line-height:1.3;margin:8px 0 10px}h2{font-size:17px;margin:0 0 18px}p{margin:8px 0}small,.muted{color:var(--muted)}.local{padding:6px 12px;border:1px solid #b9d5c9;color:var(--accent);border-radius:20px;white-space:nowrap;font-size:12px;margin-top:8px}.panel{background:var(--paper);border:1px solid var(--line);border-radius:13px;padding:24px;margin-bottom:18px}.layout{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(300px,.8fr);gap:18px;align-items:start}.layout .panel{margin-bottom:0}.step{color:var(--accent);font:12px ui-monospace,Consolas,monospace;margin-right:9px}.drop{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:150px;border:1.5px dashed #a0beb6;border-radius:10px;background:#f8fbfa;cursor:pointer;text-align:center;padding:22px;transition:.15s}.drop:hover,.drop.over{background:var(--soft);border-color:var(--accent)}.drop input{position:absolute;width:1px;height:1px;opacity:0}.drop:focus-within{outline:3px solid #70b5a4;outline-offset:3px}.drop strong{font-size:18px;font-weight:600}.drop .icon{font-size:24px;color:var(--accent);margin-bottom:7px}.filename{overflow-wrap:anywhere;max-width:100%;font-size:13px;color:var(--muted);margin-top:7px}.settings{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:19px}label.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}.wide{grid-column:1/-1}input[type=number],select{width:100%;border:1px solid #bdccce;border-radius:7px;padding:9px 10px;background:#fff;color:var(--ink);font:14px "Segoe UI","Microsoft YaHei",sans-serif}input:focus,select:focus,button:focus-visible,a:focus-visible{outline:3px solid #a9d3c7;outline-offset:2px}.subtle{font-size:12px;color:var(--muted);font-weight:400}.byteflow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin:16px 0 5px;font:13px ui-monospace,Consolas,monospace}.byte{padding:6px 10px;border-radius:5px;background:#edf1f2}.byte.y{background:#e2eee8;color:#195a43}.byte.u{background:#e4edf9;color:#335885}.byte.v{background:#f3e9f0;color:#7b3a69}.stats{display:grid;grid-template-columns:1fr 1fr;gap:16px 14px}.stat span{display:block;color:var(--muted);font-size:12px}.stat strong{display:block;font:24px/1.45 ui-monospace,Consolas,monospace;margin-top:3px}.stat em{font-size:12px;font-style:normal;color:var(--muted)}.notice{border-radius:8px;padding:12px 14px;background:var(--soft);color:#215f4b;font-size:13px;margin-top:18px;overflow-wrap:anywhere}.notice.warn{background:var(--warnbg);color:var(--warn)}.notice.error{background:#fceeee;color:var(--bad)}.check{display:flex;gap:9px;align-items:flex-start;margin-top:10px;font-size:13px;cursor:pointer}.check input{margin:5px 0 0;flex:none}.check.auto{color:var(--muted);margin-top:16px}.progressline{display:flex;justify-content:space-between;gap:12px;margin-top:18px;font-size:13px}progress{appearance:none;width:100%;height:7px;border:0;border-radius:10px;overflow:hidden;margin:7px 0 2px}progress::-webkit-progress-bar{background:#e6eeeb}progress::-webkit-progress-value{background:var(--accent)}progress::-moz-progress-bar{background:var(--accent)}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}button,.button{display:inline-flex;justify-content:center;align-items:center;border:1px solid #b9cbca;border-radius:7px;background:#fff;color:var(--ink);padding:9px 14px;font:14px "Segoe UI","Microsoft YaHei",sans-serif;cursor:pointer;text-decoration:none}button.primary,.button.primary{background:var(--accent);border-color:var(--accent);color:white}button:disabled,.button.disabled{opacity:.4;cursor:default;pointer-events:none}.outputs{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:18px}.output{border:1px solid var(--line);border-radius:10px;padding:20px;background:#fff;min-width:0}.output h3{margin:0;font-size:19px}.output p{font-size:13px;color:var(--muted)}.outname{display:block;min-height:38px;font:12px/1.5 ui-monospace,Consolas,monospace;overflow-wrap:anywhere;margin:12px 0;color:var(--muted)}.preview{display:flex;gap:23px;align-items:flex-start}.preview canvas{width:min(100%,400px);height:auto;image-rendering:pixelated;background:#e9eeed;border:1px solid var(--line);border-radius:6px}.preview .info{flex:1;min-width:170px}.preview label{max-width:160px}.fineprint{font-size:12px;color:var(--muted);margin-top:18px;line-height:1.8}.footer{margin-top:22px;font-size:12px;color:var(--muted);text-align:center}[hidden]{display:none!important}.mono{font-family:ui-monospace,Consolas,monospace}
+@media(max-width:760px){main{padding:24px 16px}header{display:block}.local{display:inline-block}.layout,.outputs{grid-template-columns:1fr}.preview{flex-direction:column}.preview .info{width:100%}h1{font-size:25px}.panel{padding:19px}.settings{gap:12px}}
+.back-nav{display:inline-flex;align-items:center;gap:6px;margin-bottom:18px;color:var(--accent);font-size:14px;text-decoration:none}.back-nav:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<main>
+<nav aria-label="工具导航"><a class="back-nav" href="index.html">← 返回工具导航</a></nav>
+<header><div><div class="eyebrow">RAW / FRAME EXTRACTOR</div><h1>连续帧，分成 Y 和 UV。</h1><p class="muted">导入 YUY2（YUYV）文件，自动计算帧数，导出两个连续帧 BIN。</p></div><span class="local">本地处理 · 无需联网</span></header>
+<div class="layout">
+<section class="panel">
+<h2><span class="step">01</span>输入与排列</h2>
+<label class="drop" id="drop"><input id="file" type="file" accept=".raw,.bin,application/octet-stream"><span class="icon" aria-hidden="true">↥</span><strong>选择或拖入 RAW 文件</strong><span class="filename" id="filename">单个文件可以包含任意数量的连续帧</span></label>
+<div class="settings">
+<label class="field">宽度 / 像素<input id="width" type="number" min="2" max="32768" step="2" value="640"></label>
+<label class="field">高度 / 行<input id="height" type="number" min="1" max="32768" step="1" value="512"></label>
+<label class="field wide">UV 的 16 位排列<select id="order"><option value="UV">U、V 字节顺序 · 小端数值 0xVVUU</option><option value="VU">16 位数值 0xUUVV · 小端字节 V、U</option></select><span id="orderHint" class="subtle">例如 U=0x12、V=0x34 → 文件字节 12 34，小端读值 0x3412。</span></label>
+</div>
+<div class="byteflow"><span class="muted">输入</span><span class="byte y">Y0</span><span class="byte u">U</span><span class="byte y">Y1</span><span class="byte v">V</span><span class="muted">→ Y8 + UV16</span></div>
+<p class="subtle">输入须为无文件头、无行填充的 YUY2；宽度必须是偶数。RAW 不带宽高信息，帧数由设置的宽高计算。</p>
+<label class="check auto"><input id="auto" type="checkbox" checked><span>选择文件或修改设置后自动分离</span></label>
+</section>
+<section class="panel">
+<h2><span class="step">02</span>帧数与分离</h2>
+<div class="stats">
+<div class="stat"><span>文件总字节</span><strong id="total">—</strong><em id="totalHuman">等待导入</em></div>
+<div class="stat"><span>完整帧数</span><strong id="frames">—</strong><em>按当前宽高计算</em></div>
+<div class="stat"><span>每帧输入字节</span><strong id="frameBytes">655,360</strong><em>宽 × 高 × 2</em></div>
+<div class="stat"><span>尾部余数字节</span><strong id="remainder">—</strong><em id="remainderHint">完整帧之外的数据</em></div>
+</div>
+<div id="notice" class="notice" role="status" aria-live="polite">准备好后，选择一个 RAW 文件。</div>
+<label class="check" id="tailWrap" hidden><input id="allowTail" type="checkbox"><span id="tailLabel">仅分离完整帧，忽略尾部余数</span></label>
+<div class="progressline"><span id="status">等待文件</span><span id="percent">0%</span></div><progress id="progress" max="100" value="0" aria-label="分离进度"></progress>
+<div class="actions"><button id="start" class="primary" disabled>开始分离</button><button id="cancel" disabled>取消</button><button id="saveBoth" disabled>保存两个 BIN 到文件夹</button></div>
+<p class="subtle" id="saveHint">也可以完成后分别点击下方的下载按钮。</p>
+</section>
+</div>
+<section class="outputs" aria-label="导出文件">
+<article class="output"><h3>Y <small>8 bit</small></h3><p>所有帧的亮度依次连接，每个像素 1 字节。</p><p><span id="yShape">640 × 512</span> / 帧 · <span id="ySize">—</span></p><span class="outname" id="yName">等待分离…</span><a id="downloadY" class="button primary disabled" aria-disabled="true">下载 Y.bin</a></article>
+<article class="output"><h3>UV <small>16 bit / 组</small></h3><p>每两个像素提取一组 U、V，每组 2 字节，不复制扩展。</p><p><span id="uvShape">320 × 512</span> 组 / 帧 · <span id="uvSize">—</span></p><span class="outname" id="uvName">等待分离…</span><a id="downloadUV" class="button primary disabled" aria-disabled="true">下载 UV.bin</a></article>
+</section>
+<section class="panel" id="previewPanel" style="margin-top:18px" hidden>
+<h2><span class="step">03</span>核对亮度画面</h2><div class="preview"><canvas id="preview" width="640" height="512" aria-label="提取的 Y 灰度画面"></canvas><div class="info"><label class="field">预览帧号<input id="previewFrame" type="number" min="1" value="1" step="1"></label><p class="subtle" id="previewCount"></p><p class="subtle">直接显示 Y8，未做拉伸、增益或滤波。若出现斜纹、错行或画面重叠，请检查采集尺寸和 RAW 实际格式。</p><button id="downloadInfo">下载分离参数说明</button></div></div>
+</section>
+<p class="fineprint">数据顺序：按原始行顺序、原始帧顺序连续保存，无 BIN 文件头。Y 与 UV 的帧数相同，两个输出文件的字节数相同，各为已处理输入的一半。U、V 只做提取和排列，不做平均或数值换算。文件在浏览器内分块读取，不上传到服务器。</p>
+<div class="footer">YUY2 / YUYV → Y8 + UV16 · 离线单文件工具 v1.0</div>
+</main>
+<script id="split-core">
+/* Same pure byte operations are used by the browser worker and verification. */
+(function(root){
+  'use strict';
+  function describe(size,width,height){
+    if(!Number.isSafeInteger(width)||width<2||width>32768||width%2)throw new Error('宽度必须是 2 到 32768 之间的偶数。');
+    if(!Number.isSafeInteger(height)||height<1||height>32768)throw new Error('高度必须是 1 到 32768 之间的整数。');
+    if(!Number.isSafeInteger(size)||size<0)throw new Error('文件大小无效。');
+    var frameBytes=width*height*2,frames=Math.floor(size/frameBytes);
+    return {width:width,height:height,size:size,frameBytes:frameBytes,frames:frames,remainder:size%frameBytes,processBytes:frames*frameBytes,outputBytes:frames*width*height};
+  }
+  function split(input,order){
+    if(order!=='UV'&&order!=='VU')throw new Error('UV 排列无效。');
+    if(input.length%4)throw new Error('YUY2 数据块长度必须是 4 字节的整数倍。');
+    var y=new Uint8Array(input.length/2),uv=new Uint8Array(input.length/2),swap=order==='VU';
+    for(var s=0,d=0;s<input.length;s+=4,d+=2){y[d]=input[s];y[d+1]=input[s+2];uv[d]=input[s+(swap?3:1)];uv[d+1]=input[s+(swap?1:3)];}
+    return {y:y,uv:uv};
+  }
+  root.Yuy2Core=Object.freeze({describe:describe,split:split});
+})(globalThis);
+</script>
+<script id="worker-code" type="text/plain">
+'use strict';
+self.onmessage=async function(event){
+  try{
+    var file=event.data.file,settings=event.data.settings,meta=Yuy2Core.describe(file.size,settings.width,settings.height);
+    if(meta.frames<1)throw new Error('文件不足一个完整帧。');
+    if(meta.remainder&&!settings.allowTail)throw new Error('文件有尾部余数，请确认宽高，或明确选择仅处理完整帧。');
+    var chunkBytes=8*1024*1024;
+    for(var offset=0;offset<meta.processBytes;offset+=chunkBytes){
+      var end=Math.min(offset+chunkBytes,meta.processBytes);
+      var input=new Uint8Array(await file.slice(offset,end).arrayBuffer());
+      var result=Yuy2Core.split(input,settings.order);
+      self.postMessage({type:'chunk',y:result.y.buffer,uv:result.uv.buffer,done:end,total:meta.processBytes},[result.y.buffer,result.uv.buffer]);
+    }
+    self.postMessage({type:'complete',meta:meta});
+  }catch(error){self.postMessage({type:'error',message:error.message||String(error)});}
+};
+</script>
+<script>
+(function(){
+  'use strict';
+  const $=id=>document.getElementById(id),fmt=n=>n.toLocaleString('en-US');
+  const human=n=>n>=1073741824?(n/1073741824).toFixed(2)+' GiB':n>=1048576?(n/1048576).toFixed(2)+' MiB':n>=1024?(n/1024).toFixed(2)+' KiB':fmt(n)+' B';
+  let source=null,worker=null,workerURL=null,job=0,result=null,urls=[],timer=null,saving=false;
+  function message(text,type=''){ $('notice').textContent=text;$('notice').className='notice'+(type?' '+type:''); }
+  function config(){return {width:Number($('width').value),height:Number($('height').value),order:$('order').value,allowTail:$('allowTail').checked};}
+  function nameBase(){return source.name.replace(/\.[^.]+$/,'').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').slice(0,120)||'capture';}
+  function clearResult(){
+    urls.forEach(URL.revokeObjectURL);urls=[];result=null;
+    for(const key of ['Y','UV']){const a=$('download'+key);a.removeAttribute('href');a.removeAttribute('download');a.classList.add('disabled');a.setAttribute('aria-disabled','true');}
+    $('yName').textContent=$('uvName').textContent='等待分离…';$('ySize').textContent=$('uvSize').textContent='—';
+    $('saveBoth').disabled=true;$('previewPanel').hidden=true;
+  }
+  function stop(){job++;if(worker)worker.terminate();worker=null;if(workerURL)URL.revokeObjectURL(workerURL);workerURL=null;$('cancel').disabled=true;}
+  function updateHint(){
+    $('orderHint').textContent=$('order').value==='UV'?'例如 U=0x12、V=0x34 → 文件字节 12 34，小端读值 0x3412。':'例如 U=0x12、V=0x34 → 文件字节 34 12，小端读值 0x1234。';
+  }
+  function analyze(){
+    updateHint();$('start').disabled=true;
+    try{
+      const cfg=config(),meta=Yuy2Core.describe(source?source.size:0,cfg.width,cfg.height);
+      $('frameBytes').textContent=fmt(meta.frameBytes);$('yShape').textContent=cfg.width+' × '+cfg.height;$('uvShape').textContent=(cfg.width/2)+' × '+cfg.height;
+      if(!source)return null;
+      $('total').textContent=fmt(source.size);$('totalHuman').textContent=human(source.size);$('frames').textContent=fmt(meta.frames);$('remainder').textContent=fmt(meta.remainder);
+      $('remainderHint').textContent=meta.remainder?'不足一帧的 '+(100*meta.remainder/meta.frameBytes).toFixed(2)+'%':'恰好按整帧对齐';
+      $('tailWrap').hidden=!meta.remainder;
+      $('tailLabel').textContent='仅分离 '+fmt(meta.frames)+' 个完整帧，忽略尾部 '+fmt(meta.remainder)+' 字节（请先确认宽高）';
+      if(!meta.frames){message('当前设置下，文件不足一个完整帧，请检查宽高或文件。','error');return null;}
+      if(meta.remainder&&!cfg.allowTail){message('检测到尾部余数：这也可能是宽高或实际格式不一致。请核对，或勾选下方选项只处理完整帧。','warn');$('status').textContent='等待确认尾部余数';return null;}
+      if(meta.remainder)message('将提取 '+fmt(meta.frames)+' 个完整帧；尾部 '+fmt(meta.remainder)+' 字节不会写入输出。','warn');
+      else message('已识别 '+fmt(meta.frames)+' 个完整帧，输入按整帧对齐。');
+      $('start').disabled=!!worker||saving;return meta;
+    }catch(error){message(error.message,'error');return null;}
+  }
+  function schedule(){
+    clearTimeout(timer);stop();clearResult();$('progress').value=0;$('percent').textContent='0%';$('status').textContent=source?'设置已更新':'等待文件';
+    const meta=analyze();if(meta&&$('auto').checked)timer=setTimeout(start,250);
+  }
+  function selectFile(file){if(!file)return;if(saving)return;source=file;$('allowTail').checked=false;$('filename').textContent=file.name+' · '+human(file.size);schedule();}
+  function enableDownload(id,blob,name){const url=URL.createObjectURL(blob);urls.push(url);const a=$(id);a.href=url;a.download=name;a.classList.remove('disabled');a.setAttribute('aria-disabled','false');}
+  async function preview(){
+    const selected=result;if(!selected)return;
+    const frame=Number($('previewFrame').value);if(!Number.isInteger(frame)||frame<1||frame>selected.meta.frames)return;
+    const stamp=job,pixels=selected.meta.width*selected.meta.height;
+    const y=new Uint8Array(await selected.y.slice((frame-1)*pixels,frame*pixels).arrayBuffer());
+    if(job!==stamp||result!==selected)return;
+    const canvas=$('preview');canvas.width=selected.meta.width;canvas.height=selected.meta.height;const ctx=canvas.getContext('2d');const image=ctx.createImageData(canvas.width,canvas.height);
+    for(let i=0;i<y.length;i++){image.data[4*i]=image.data[4*i+1]=image.data[4*i+2]=y[i];image.data[4*i+3]=255;}
+    ctx.putImageData(image,0,0);$('previewCount').textContent='第 '+fmt(frame)+' / '+fmt(selected.meta.frames)+' 帧';
+  }
+  function complete(meta,cfg,yParts,uvParts){
+    const y=new Blob(yParts,{type:'application/octet-stream'}),uv=new Blob(uvParts,{type:'application/octet-stream'});
+    if(y.size!==meta.outputBytes||uv.size!==meta.outputBytes)throw new Error('输出长度校验失败，请重新分离。');
+    const prefix=nameBase()+'_'+meta.width+'x'+meta.height+'_'+meta.frames+'frames';
+    const yName=prefix+'_Y8.bin',uvName=prefix+'_UV16_'+cfg.order+'bytes.bin';
+    result={y,uv,yName,uvName,meta,cfg,sourceName:source.name};
+    enableDownload('downloadY',y,yName);enableDownload('downloadUV',uv,uvName);
+    $('yName').textContent=yName;$('uvName').textContent=uvName;$('ySize').textContent=$('uvSize').textContent=fmt(y.size)+' 字节';
+    $('saveBoth').disabled=!window.showDirectoryPicker;$('previewPanel').hidden=false;$('previewFrame').value=1;$('previewFrame').max=meta.frames;
+    $('status').textContent='分离完成 · '+fmt(meta.frames)+' 帧';$('progress').value=100;$('percent').textContent='100%';
+    message('分离完成：Y 和 UV 各 '+fmt(y.size)+' 字节，均包含 '+fmt(meta.frames)+' 帧。'+(meta.remainder?' 已按确认忽略尾部 '+fmt(meta.remainder)+' 字节。':''),meta.remainder?'warn':'');
+    preview().catch(error=>message('分离已完成，预览失败：'+error.message,'warn'));
+  }
+  function start(){
+    if(saving||!source)return;clearTimeout(timer);stop();clearResult();const meta=analyze();if(!meta)return;
+    const cfg=config(),thisJob=job,yParts=[],uvParts=[];
+    $('start').disabled=true;$('cancel').disabled=false;$('status').textContent='正在分块分离…';$('percent').textContent='0%';$('progress').value=0;
+    try{
+      workerURL=URL.createObjectURL(new Blob([$('split-core').textContent,'\n',$('worker-code').textContent],{type:'text/javascript'}));
+      worker=new Worker(workerURL);
+      const fail=err=>{if(thisJob!==job)return;stop();yParts.length=uvParts.length=0;clearResult();$('start').disabled=false;$('status').textContent='分离失败';message(err,'error');};
+      worker.onerror=event=>fail('分离进程异常：'+(event.message||'请尝试使用 Chrome / Edge 打开此 HTML 文件。'));
+      worker.onmessage=event=>{
+        if(thisJob!==job)return;const data=event.data;
+        if(data.type==='chunk'){yParts.push(data.y);uvParts.push(data.uv);const percent=Math.floor(100*data.done/data.total);$('progress').value=percent;$('percent').textContent=percent+'%';$('status').textContent='已处理 '+human(data.done)+' / '+human(data.total);}
+        else if(data.type==='error')fail(data.message);
+        else if(data.type==='complete'){try{worker.terminate();worker=null;URL.revokeObjectURL(workerURL);workerURL=null;$('cancel').disabled=true;$('start').disabled=false;complete(data.meta,cfg,yParts,uvParts);yParts.length=uvParts.length=0;}catch(error){fail(error.message);}}
+      };
+      worker.postMessage({file:source,settings:cfg});
+    }catch(error){stop();$('start').disabled=false;$('status').textContent='分离失败';message(error.message,'error');}
+  }
+  function infoText(){
+    const r=result,m=r.meta,c=r.cfg;
+    return ['YUY2 连续帧分离参数','原文件：'+r.sourceName,'输入格式：YUY2 / YUYV，字节 Y0 U Y1 V，无文件头、无行填充','输入宽高：'+m.width+' × '+m.height,'源文件字节数：'+m.size,'每帧输入字节数：'+m.frameBytes,'完整帧数：'+m.frames,'处理输入字节数：'+m.processBytes,'忽略尾部字节数：'+m.remainder,'','Y 文件：'+r.yName,'Y：8 bit，无符号，每像素 1 字节，每帧 '+(m.width*m.height)+' 字节','UV 文件：'+r.uvName,'UV：每两个像素 1 组，每组 16 bit，每帧 '+(m.width/2)+' × '+m.height+' 组 / '+(m.width*m.height)+' 字节','UV 文件字节顺序：'+c.order,'16 位小端读值：'+(c.order==='UV'?'(V << 8) | U，即 0xVVUU':'(U << 8) | V，即 0xUUVV'),'两个输出均为原始行顺序、原始帧顺序连续连接，无文件头。','不平均、不复制色度，不修改 Y 数值。'].join('\r\n');
+  }
+  $('file').addEventListener('change',()=>selectFile($('file').files[0]));
+  for(const id of ['width','height','order','allowTail'])$(id).addEventListener('input',schedule);
+  $('auto').addEventListener('change',()=>{if($('auto').checked&&!result&&!worker)schedule();});
+  $('start').addEventListener('click',start);$('cancel').addEventListener('click',()=>{stop();clearResult();$('start').disabled=!analyze();$('status').textContent='已取消';$('progress').value=0;$('percent').textContent='0%';message('已取消分离，可以修改设置后重新开始。');});
+  $('previewFrame').addEventListener('input',()=>preview().catch(error=>message('预览失败：'+error.message,'warn')));
+  for(const type of ['dragenter','dragover'])$('drop').addEventListener(type,event=>{event.preventDefault();$('drop').classList.add('over');});
+  for(const type of ['dragleave','drop'])$('drop').addEventListener(type,event=>{event.preventDefault();$('drop').classList.remove('over');});
+  $('drop').addEventListener('drop',event=>{if(event.dataTransfer.files.length!==1){message('请一次选择一个连续帧 RAW 文件。','warn');return;}selectFile(event.dataTransfer.files[0]);});
+  window.addEventListener('dragover',event=>event.preventDefault());window.addEventListener('drop',event=>event.preventDefault());
+  if(!window.showDirectoryPicker){$('saveHint').textContent='此浏览器请使用下方两个下载按钮分别保存 BIN。';$('saveBoth').title='当前浏览器未提供文件夹保存接口';}
+  $('saveBoth').addEventListener('click',async()=>{
+    if(!result||saving)return;
+    const selected=result;saving=true;$('saveBoth').disabled=true;$('start').disabled=true;for(const id of ['file','width','height','order','allowTail','auto'])$(id).disabled=true;
+    let saved=0;
+    try{
+      const dir=await window.showDirectoryPicker({mode:'readwrite'});
+      // Reject existing names before creating anything; never silently overwrite.
+      for(const name of [selected.yName,selected.uvName]){let exists=false;try{await dir.getFileHandle(name);exists=true;}catch(error){if(error.name!=='NotFoundError')throw error;}if(exists)throw new Error('目标文件夹已有同名文件 '+name+'，请换一个文件夹，或分别下载。');}
+      for(const [name,blob] of [[selected.yName,selected.y],[selected.uvName,selected.uv]]){
+        const handle=await dir.getFileHandle(name,{create:true});const writable=await handle.createWritable();
+        try{await writable.write(blob);await writable.close();saved++;}catch(error){try{await writable.abort();}catch(_){}throw error;}
+      }
+      message('两个 BIN 已保存到你选择的文件夹。');
+    }catch(error){if(error.name==='AbortError')message('已取消文件夹选择，仍可分别下载。');else message('保存未完成（已完成 '+saved+'/2 个文件）：'+error.message,'error');}
+    finally{saving=false;$('saveBoth').disabled=false;$('start').disabled=false;for(const id of ['file','width','height','order','allowTail','auto'])$(id).disabled=false;}
+  });
+  $('downloadInfo').addEventListener('click',()=>{if(!result)return;const url=URL.createObjectURL(new Blob(['\ufeff'+infoText()],{type:'text/plain;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download=nameBase()+'_分离参数.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);});
+  window.addEventListener('beforeunload',()=>{stop();urls.forEach(URL.revokeObjectURL);});
+  analyze();
+})();
+</script>
+</body>
+</html>
