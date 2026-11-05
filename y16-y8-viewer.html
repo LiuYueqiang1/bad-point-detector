@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="dark">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
-<title>Y16 / Y8 本地图像查看器 · 072</title>
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; media-src blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>Y16 / Y8 本地图像查看器</title>
 <style>
 :root{--bg:#11151c;--panel:#1a202b;--edge:#323d4f;--text:#e9eef6;--dim:#adbace;--accent:#84c9ff;--input:#111822;--error:#ffb7ac}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px/1.55 "Microsoft YaHei","Segoe UI",sans-serif}main{max-width:1800px;margin:auto;padding:22px 26px}h1{font-size:23px;font-weight:600;margin:0}p{margin:5px 0}.muted{color:var(--dim)}.head{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}.badge{color:#b9dcf4;border:1px solid var(--edge);border-radius:30px;padding:5px 12px;white-space:nowrap}.drop{border:1px dashed #55738e;border-radius:10px;padding:20px;display:flex;align-items:center;justify-content:space-between;gap:20px;background:#182331;margin-bottom:14px}.drop.dragging{background:#203c51;border-color:var(--accent)}.drop strong{display:block;font-size:17px;font-weight:500;margin-bottom:4px}.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}button,input,select{font:inherit;color:inherit}button,select,input[type=number]{background:var(--input);border:1px solid #415068;border-radius:5px;padding:7px 9px;min-height:34px}button{cursor:pointer}button:hover:enabled{border-color:var(--accent);background:#24354a}button:disabled{opacity:.4;cursor:default}.primary{background:#a9d9fc;color:#102030;border-color:#a9d9fc;font-weight:600}.primary:hover:enabled{background:#cce9ff;color:#102030}.format{gap:14px}.format label{display:flex;align-items:center;gap:8px}.format input[type=number]{width:76px}#headerBytes{width:103px}input[type=range]{width:100%;accent-color:var(--accent);cursor:pointer;margin:8px 0}input:disabled{opacity:.4}select{max-width:100%}label{color:var(--dim)}label b{color:var(--text);font-weight:500}details{margin:12px 0}summary{color:var(--dim);cursor:pointer}details .row{margin-top:10px}.status{margin:12px 0;padding:9px 12px;background:var(--panel);border-radius:6px;overflow-wrap:anywhere}.status:empty{display:none}#error{color:var(--error);border-left:3px solid #ee9281}#warning{color:#efcc91;border-left:3px solid #b5985b}.layout{display:grid;grid-template-columns:268px minmax(0,1fr);gap:16px;align-items:start}.controls{background:var(--panel);border:1px solid var(--edge);padding:16px;border-radius:8px}.group{margin:0 0 20px}.group:last-child{margin-bottom:0}.group-title{font-size:15px;font-weight:500;margin-bottom:8px}.value-row{display:flex;align-items:center;justify-content:space-between;gap:6px}.value-row input[type=number]{width:83px;text-align:right;font-variant-numeric:tabular-nums}.limits{display:grid;grid-template-columns:1fr 1fr;gap:8px}.limits label{display:block}.limits input{width:100%;margin-top:5px}.controls button{font-size:13px}.controls .row{gap:6px}.frame-nav{display:flex;align-items:center;gap:8px}.frame-nav input{width:82px;text-align:center;font-variant-numeric:tabular-nums}#frameTotal{color:var(--dim);white-space:nowrap}.stage{min-width:0}.images{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.image-panel{min-width:0;border:1px solid var(--edge);border-radius:8px;overflow:hidden;background:#0b0d12}.image-label{padding:9px 12px;border-bottom:1px solid var(--edge);background:var(--panel);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}.image-label strong{font-weight:500}.image-label span{color:var(--dim);font-size:12px}.canvas-space{position:relative;line-height:0;min-height:210px;display:flex;align-items:center;justify-content:center}.canvas-space canvas{display:block;width:100%;height:auto;image-rendering:pixelated}.placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--dim);line-height:1.6;padding:20px;text-align:center;pointer-events:none}.meta{margin-top:12px;color:var(--dim);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.stats{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px}.stats b{color:var(--text);font-weight:500}.pixel{min-height:28px;margin-top:8px;color:#b9dcf4;font-variant-numeric:tabular-nums}.actions{margin-top:14px}.file-list{max-height:180px;overflow:auto;font-size:12px;color:var(--dim);padding-left:20px}.note{font-size:12px;color:var(--dim);margin-top:9px}.footer{margin-top:20px;color:var(--dim);font-size:12px}.key{border:1px solid var(--edge);padding:0 5px;border-radius:3px}a{color:var(--accent)}:focus-visible{outline:2px solid var(--accent);outline-offset:3px}body:not(.ready) .requires-file{opacity:.55}[hidden]{display:none!important}
@@ -15,6 +15,7 @@
 @media(max-width:700px){.layout{grid-template-columns:1fr}.controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.group{margin:0}.drop{padding:15px;align-items:flex-start;flex-direction:column}.format{align-items:flex-start;gap:8px}main{padding:12px}.images{grid-template-columns:1fr}h1{font-size:20px}.frame-group{grid-column:1/-1}.meta{font-size:12px}}
 @media(max-width:390px){.controls{grid-template-columns:1fr}.head{gap:7px}.format label{flex-wrap:wrap}}
 .back-nav{display:inline-flex;align-items:center;gap:6px;margin-bottom:18px;color:var(--accent);font-size:14px;text-decoration:none}.back-nav:hover{text-decoration:underline}
+.clip-range{border-top:1px solid var(--edge);margin-top:14px;padding-top:12px}.clip-range .limits input{min-width:0}.clip-range .row{margin-top:8px}.export-status progress{display:block;width:100%;accent-color:var(--accent);margin:8px 0}.export-status .row{justify-content:space-between}.range-error{color:var(--error)}
 </style>
 </head>
 <body>
@@ -29,6 +30,14 @@
   <div class="layout">
     <aside class="controls">
       <section class="group frame-group"><div class="group-title">选择帧</div><div class="frame-nav"><input id="frameNumber" type="number" value="1" min="1" max="1" step="1" aria-label="帧号" disabled><span id="frameTotal">/ 0</span><button id="frameJump" type="button" disabled>跳转</button></div><input id="frameSlider" type="range" min="1" max="1" value="1" step="1" aria-label="帧滑条" disabled><div class="row"><button id="prev" type="button" disabled aria-label="上一帧">←</button><button id="next" type="button" disabled aria-label="下一帧">→</button><button id="play" type="button" disabled>播放</button><select id="fps" aria-label="播放帧率"><option value="5">5 fps</option><option value="10" selected>10 fps</option><option value="20">20 fps</option><option value="50">50 fps</option></select></div><p class="note">输入帧号后按回车或“跳转”。加载默认末帧，避开启动黑帧。</p></section>
+      <section class="group frame-group clip-range" aria-label="截取帧范围">
+        <div class="group-title">截取与导出</div>
+        <div class="limits"><label>起始帧<input id="clipStart" type="number" min="1" max="1" step="1" value="1" aria-label="截取起始帧" disabled></label><label>结束帧<input id="clipEnd" type="number" min="1" max="1" step="1" value="1" aria-label="截取结束帧" disabled></label></div>
+        <div class="row"><button id="setClipStart" type="button" disabled>当前帧设为起点</button><button id="setClipEnd" type="button" disabled>当前帧设为终点</button></div>
+        <p id="clipSummary" class="note" aria-live="polite">加载后可选择任意连续帧范围。</p>
+        <button id="saveClip" type="button" disabled>保存所选帧 RAW</button>
+        <p class="note">包含起止帧；RAW保留原位宽和大小端，不带文件头。例如20～80帧共61帧。下方视频导出也使用此范围。</p>
+      </section>
       <section class="group"><div class="value-row"><label for="brightness"><b>亮度偏移</b></label><input id="brightnessNumber" type="number" min="-128" max="128" step="1" value="0" aria-label="亮度数值"></div><input id="brightness" type="range" min="-128" max="128" step="1" value="0" aria-label="亮度偏移"><p class="note">单位为显示灰度，正值提亮。</p></section>
       <section class="group"><div class="value-row"><label for="gamma"><b>Gamma</b></label><input id="gammaNumber" type="number" min="0.1" max="5" step="0.05" value="1" aria-label="Gamma数值"></div><input id="gamma" type="range" min="0.1" max="5" step="0.05" value="1" aria-label="Gamma"><p class="note">Gamma大于1提亮，小于1压暗。</p></section>
       <section class="group"><div class="group-title">灰度拉伸</div><div class="limits"><label>黑场值<input id="low" type="number" min="0" max="65535" step="1" value="0" aria-label="黑场值"></label><label>白场值<input id="high" type="number" min="1" max="65535" step="1" value="255" aria-label="白场值"></label></div><div class="row" style="margin-top:10px"><button id="autoStretch" type="button" disabled>自动拉伸 1%～99%</button><button id="fullRange" type="button">原始范围</button><button id="range14" type="button" disabled>14位范围</button></div><p class="note">自动拉伸只计算当前帧，切帧时保持范围。</p></section>
@@ -41,10 +50,12 @@
       <div id="stats" class="stats" aria-live="off"><span>最小 <b id="minStat">—</b></span><span>最大 <b id="maxStat">—</b></span><span>平均 <b id="meanStat">—</b></span><span>1% / 99% <b id="percentStat">—</b></span></div>
       <div id="frameMeta" class="meta">—</div><div id="pixel" class="pixel">移动鼠标可查看像素坐标和原始数值（坐标从1开始）。</div>
       <div class="row actions"><button id="saveRaw" type="button" disabled>导出原始帧 RAW</button><button id="savePng" type="button" disabled>保存调整后 PNG</button><button id="saveY8" type="button" disabled>导出显示 Y8 RAW</button></div>
+      <div class="row actions"><button id="saveVideo" type="button" disabled>导出调整后视频（WebM）</button><span class="note">按所选帧范围、当前显示参数和播放帧率导出，无声音。</span></div>
+      <div id="exportStatus" class="status export-status" hidden><div class="row"><span id="exportText" role="status" aria-live="polite"></span><button id="cancelExport" type="button">取消导出</button></div><progress id="exportProgress" max="100" value="0" aria-label="导出进度"></progress></div>
       <p id="domainNote" class="note">Y8每像素1字节，Y16每像素2字节；文件内按逐行顺序排列。</p>
     </section>
   </div>
-  <footer class="footer">072 · 双击HTML即可使用，无需安装或联网。<span class="key">←</span> <span class="key">→</span> 切帧，<span class="key">空格</span> 播放/暂停；编辑输入框时快捷键不生效。</footer>
+  <footer class="footer"><span class="key">←</span> <span class="key">→</span> 切帧，<span class="key">空格</span> 播放/暂停；编辑输入框时快捷键不生效。</footer>
   <dialog id="largeDialog" class="large-dialog" aria-labelledby="largeTitle"><div class="large-shell">
     <div class="large-head"><h2 id="largeTitle">像素放大预览</h2><span id="largeFrameLabel" class="large-frame-label">尚未加载文件</span><button id="closeLarge" type="button">关闭大窗口</button></div>
     <div class="large-controls"><label>图像<select id="largeSource" aria-label="大窗口显示图像"><option value="adjusted">调整后</option><option value="original">原始预览</option></select></label><label>倍率<select id="largeZoom" aria-label="大窗口放大倍数"><option value="fit">适应</option><option value="1">1:1</option><option value="2">2×</option><option value="4">4×</option><option value="8">8×</option><option value="16">16×</option></select></label><button id="largeCenter" type="button">回到中心</button><button id="largePrev" type="button" aria-label="大窗口上一帧">←</button><button id="largePlay" type="button">播放</button><button id="largeNext" type="button" aria-label="大窗口下一帧">→</button><select id="largeFps" aria-label="大窗口播放帧率"><option value="5">5 fps</option><option value="10" selected>10 fps</option><option value="20">20 fps</option><option value="50">50 fps</option></select><label>帧号<input id="largeFrameNumber" type="number" min="1" step="1" value="1" aria-label="大窗口帧号"></label><button id="largeJump" type="button">跳转帧</button></div>
@@ -91,6 +102,23 @@ const RawCore = (() => {
     if(format==='u8')return new Uint8Array(buffer);
     const out=new Uint16Array(pixels),v=new DataView(buffer);for(let i=0;i<pixels;i++)out[i]=v.getUint16(i*2,format==='u16le');return out;
   }
+  function frameRange(plan,start,end) {
+    if(!plan||!Number.isSafeInteger(start)||!Number.isSafeInteger(end)||start<1||end<start||end>plan.total)throw new Error(`请选择有效范围：1～${plan?plan.total:0}帧，起始帧不能大于结束帧。`);
+    const count=end-start+1,bytes=count*plan.frameBytes;
+    if(!Number.isSafeInteger(bytes))throw new Error('截取范围过大，请缩小范围。');
+    return {start,end,count,bytes};
+  }
+  function clipParts(plan,start,end) {
+    const range=frameRange(plan,start,end),parts=[];
+    for(const segment of plan.segments){
+      const first=Math.max(start,segment.first),last=Math.min(end,segment.first+segment.count-1);
+      if(first>last)continue;
+      const begin=segment.header+(first-segment.first)*plan.frameBytes;
+      parts.push(segment.file.slice(begin,begin+(last-first+1)*plan.frameBytes));
+    }
+    if(parts.reduce((sum,part)=>sum+part.size,0)!==range.bytes)throw new Error('截取数据长度不完整，请重新加载文件。');
+    return parts;
+  }
   function stats(values,max) {
     const hist=new Uint32Array(max+1);let sum=0,min=max,peak=0;
     for(let i=0;i<values.length;i++){const x=values[i];hist[x]++;sum+=x;if(x<min)min=x;if(x>peak)peak=x;}
@@ -108,7 +136,7 @@ const RawCore = (() => {
     if(!Number.isFinite(brightness)||brightness< -128||brightness>128)throw new Error('亮度范围为-128～128。');
     const lut=new Uint8Array(max+1);for(let i=0;i<=max;i++){const u=Math.max(0,Math.min(1,(i-low)/(high-low)));lut[i]=Math.max(0,Math.min(255,Math.round(255*Math.pow(u,1/gamma)+brightness)));}return lut;
   }
-  return {geometry,inferFormat,plan,locate,decode,stats,stretchBounds,table};
+  return {geometry,inferFormat,plan,locate,decode,frameRange,clipParts,stats,stretchBounds,table};
 })();
 </script>
 <script id="view-core">
@@ -130,12 +158,58 @@ const ViewCore=(()=>{
   return {levels,layout,point,anchor,pan,step,clamp};
 })();
 </script>
+<script id="video-core">
+// VP8编码帧封装为带时长和索引的WebM；时间戳取自源帧号，不受导出耗时影响。
+const VideoCore=(()=>{
+  const text=value=>new TextEncoder().encode(value);
+  function uint(value,width=0){
+    if(!Number.isSafeInteger(value)||value<0)throw new Error('无效的视频整数。');
+    if(!width){width=1;for(let n=value;n>=256;n=Math.floor(n/256))width++;}
+    const bytes=new Uint8Array(width);for(let i=width-1;i>=0;i--){bytes[i]=value%256;value=Math.floor(value/256);}return bytes;
+  }
+  function size(value){
+    if(!Number.isSafeInteger(value)||value<0)throw new Error('视频文件过大。');
+    let width=1;while(width<8&&value>=Math.pow(2,7*width)-1)width++;
+    const bytes=uint(value,width);bytes[0]|=1<<(8-width);return bytes;
+  }
+  function element(id,parts){const payload=parts instanceof Blob?parts:new Blob(Array.isArray(parts)?parts:[parts]);return new Blob([uint(id),size(payload.size),payload]);}
+  function number(id,value,width=0){return element(id,uint(value,width));}
+  function float(id,value){const buffer=new ArrayBuffer(8);new DataView(buffer).setFloat64(0,value,false);return element(id,buffer);}
+  function webm(frames,width,height,fps){
+    if(!frames.length||!frames[0].key)throw new Error('视频缺少首个关键帧。');
+    if(!Number.isFinite(fps)||fps<1||fps>60)throw new Error('视频帧率无效。');
+    const header=element(0x1a45dfa3,[number(0x4286,1),number(0x42f7,1),number(0x42f2,4),number(0x42f3,8),element(0x4282,text('webm')),number(0x4287,2),number(0x4285,2)]);
+    const info=element(0x1549a966,[number(0x2ad7b1,1000000),float(0x4489,frames.length*1000/fps),element(0x4d80,text('RawViewer')),element(0x5741,text('RawViewer'))]);
+    const tracks=element(0x1654ae6b,element(0xae,[number(0xd7,1),number(0x73c5,1),number(0x83,1),number(0x9c,0),element(0x86,text('V_VP8')),number(0x23e383,Math.round(1e9/fps)),element(0xe0,[number(0xb0,width),number(0xba,height)])]));
+    const clusters=[];let blocks=[],base=0;
+    const finish=()=>{if(blocks.length)clusters.push({time:base,blob:element(0x1f43b675,[number(0xe7,base),...blocks])});blocks=[];};
+    for(const frame of frames){
+      const time=Math.round(frame.timestamp/1000);
+      if(blocks.length&&(frame.key||time-base>30000))finish();
+      if(!blocks.length)base=time;
+      const blockHeader=new Uint8Array(4);blockHeader[0]=0x81;new DataView(blockHeader.buffer).setInt16(1,time-base,false);blockHeader[3]=frame.key?0x80:0;
+      blocks.push(element(0xa3,[blockHeader,frame.data]));
+    }
+    finish();
+    const seek=(id,position)=>element(0x4dbb,[element(0x53ab,uint(id)),number(0x53ac,position,8)]);
+    const seekHead=(infoPos,trackPos,cuePos)=>element(0x114d9b74,[seek(0x1549a966,infoPos),seek(0x1654ae6b,trackPos),seek(0x1c53bb6b,cuePos)]);
+    const infoPos=seekHead(0,0,0).size,trackPos=infoPos+info.size;let position=trackPos+tracks.size;
+    const points=clusters.map(cluster=>{const cue=element(0xbb,[number(0xb3,cluster.time),element(0xb7,[number(0xf7,1),number(0xf1,position)])]);position+=cluster.blob.size;return cue;});
+    const cues=element(0x1c53bb6b,points);
+    const segment=element(0x18538067,[seekHead(infoPos,trackPos,position),info,tracks,...clusters.map(x=>x.blob),cues]);
+    return new Blob([header,segment],{type:'video/webm'});
+  }
+  return {webm};
+})();
+</script>
 <script id="viewer-ui">
 (() => {
   'use strict';
   const $=id=>document.getElementById(id),E={};for(const id of ['dropZone','choose','fileInput','format','endianLE','endianBE','width','height','headerBytes','apply','fileList','fileStatus','error','warning','prev','next','frameNumber','frameJump','frameSlider','frameTotal','play','fps','brightness','brightnessNumber','gamma','gammaNumber','low','high','autoStretch','fullRange','range14','reset','original','adjusted','nativeRange','adjustedRange','minStat','maxStat','meanStat','percentStat','frameMeta','pixel','saveRaw','savePng','saveY8','domainNote'])E[id]=$(id);
   for(const id of ['centerView','openLarge','zoomInfo','largeDialog','closeLarge','largeSource','largeZoom','largeCenter','largePrev','largeNext','largePlay','largeFps','largeFrameNumber','largeJump','largeFrameLabel','largeViewport','largeCanvas','largeViewInfo','largePixel'])E[id]=$(id);
-  const S={files:[],plan:null,width:640,height:512,max:255,frame:1,values:null,raw:null,mapped:null,stats:null,token:0,playing:false,timer:null,dragDepth:0,loading:false,location:null};
+  for(const id of ['clipStart','clipEnd','setClipStart','setClipEnd','clipSummary','saveClip','saveVideo','exportStatus','exportText','exportProgress','cancelExport'])E[id]=$(id);
+  const exportControls=Array.from(document.querySelectorAll('button,input,select')).filter(e=>e!==E.cancelExport&&e!==E.closeLarge);
+  const S={files:[],plan:null,width:640,height:512,max:255,frame:1,values:null,raw:null,mapped:null,stats:null,token:0,playing:false,timer:null,dragDepth:0,loading:false,location:null,exportJob:null};
   const V={mode:'fit',cx:319.5,cy:255.5,width:640,height:512,drag:null};
   const zoomButtons=Array.from(document.querySelectorAll('[data-zoom]'));
   const context={original:E.original.getContext('2d',{alpha:false}),adjusted:E.adjusted.getContext('2d',{alpha:false}),large:E.largeCanvas.getContext('2d',{alpha:false})};
@@ -145,7 +219,7 @@ const ViewCore=(()=>{
   function renderViews(){
     syncViewSize();
     for(const item of viewports){if(!item.box.clientWidth||!item.box.clientHeight)continue;const l=viewLayout(item);item.canvas.style.width=l.width+'px';item.canvas.style.height=l.height+'px';item.canvas.style.left=l.left+'px';item.canvas.style.top=l.top+'px';}
-    for(const b of zoomButtons){b.setAttribute('aria-pressed',String(b.dataset.zoom===V.mode));b.disabled=!S.values;}
+    for(const b of zoomButtons){b.setAttribute('aria-pressed',String(b.dataset.zoom===V.mode));b.disabled=!S.values||!!S.exportJob;}
     E.largeZoom.value=V.mode;
     const scaleLabel=V.mode==='fit'?'适应窗口':V.mode==='1'?'1:1':V.mode+'×';
     const note=`${scaleLabel} · 观察中心 x=${Math.round(V.cx)+1}，y=${Math.round(V.cy)+1} · 拖动平移，滚轮缩放；切帧/播放保持位置`;
@@ -170,7 +244,13 @@ const ViewCore=(()=>{
   function message(id,text){E[id].textContent=text;E[id].hidden=!text;}
   function error(e){const text=e.message||String(e);message('error',text);if(E.largeDialog.open){E.largePixel.textContent=text;E.largePixel.classList.add('large-error');}}
   function syncEndian(){const fmt=S.plan?S.plan.format:E.format.value;E.endianLE.disabled=E.endianBE.disabled=fmt==='u8'||S.loading;E.endianLE.setAttribute('aria-pressed',String(fmt==='u16le'));E.endianBE.setAttribute('aria-pressed',String(fmt==='u16be'));}
-  function enabled(){const ok=!!S.values&&!S.loading;for(const id of ['saveRaw','savePng','saveY8','autoStretch'])E[id].disabled=!ok;const loaded=!!S.plan;E.frameNumber.disabled=E.frameSlider.disabled=E.frameJump.disabled=!loaded;E.prev.disabled=!loaded||S.frame<=1;E.next.disabled=!loaded||S.frame>=S.plan.total;E.play.disabled=!loaded||S.plan.total<2;E.range14.disabled=!loaded||S.max===255;E.openLarge.disabled=!ok||!S.mapped;E.centerView.disabled=!S.values;syncEndian();largeControls();}
+  function enabled(){
+    if(S.exportJob){for(const control of exportControls)control.disabled=true;return;}
+    const ok=!!S.values&&!S.loading;
+    for(const id of ['saveRaw','savePng','saveY8','autoStretch','saveClip','saveVideo','setClipStart','setClipEnd'])E[id].disabled=!ok;
+    const loaded=!!S.plan;E.clipStart.disabled=E.clipEnd.disabled=!loaded;
+    E.frameNumber.disabled=E.frameSlider.disabled=E.frameJump.disabled=!loaded;E.prev.disabled=!loaded||S.frame<=1;E.next.disabled=!loaded||S.frame>=S.plan.total;E.play.disabled=!loaded||S.plan.total<2;E.range14.disabled=!loaded||S.max===255;E.openLarge.disabled=!ok||!S.mapped;E.centerView.disabled=!S.values;syncEndian();largeControls();
+  }
   function stop(){S.playing=false;clearTimeout(S.timer);S.timer=null;E.play.textContent=E.largePlay.textContent='播放';}
   function controls(){E.frameNumber.value=E.frameSlider.value=String(S.frame);if(S.plan){E.frameNumber.max=E.frameSlider.max=String(S.plan.total);E.frameTotal.textContent='/ '+S.plan.total;}else{E.frameNumber.max=E.frameSlider.max='1';E.frameTotal.textContent='/ 0';}enabled();renderViews();}
   function clearFrame(){S.values=null;S.raw=null;S.mapped=null;S.stats=null;S.location=null;document.body.classList.remove('ready');document.querySelectorAll('.placeholder').forEach(e=>e.hidden=false);for(const k of ['minStat','maxStat','meanStat','percentStat'])E[k].textContent='—';E.frameMeta.textContent='—';for(const k of ['original','adjusted'])context[k].clearRect(0,0,E[k].width,E[k].height);context.large.clearRect(0,0,E.largeCanvas.width,E.largeCanvas.height);enabled();}
@@ -192,10 +272,11 @@ const ViewCore=(()=>{
     }catch(e){if(token===S.token){stop();error(e);}return false;}finally{if(token===S.token){S.loading=false;controls();}}
   }
   async function configure(){
+    if(S.exportJob)return;
     stop();++S.token;S.plan=null;clearFrame();controls();message('error','');message('warning','');if(!S.files.length)return;
     try{const w=Number(E.width.value),h=Number(E.height.value),pixels=RawCore.geometry(w,h),head=Number(E.headerBytes.value);if(!Number.isSafeInteger(head)||head<0)throw new Error('文件头字节数必须是非负整数。');
       const mode=E.format.value==='auto'?RawCore.inferFormat(S.files,pixels,head):{format:E.format.value,reason:'手动指定'};
-      const plan=RawCore.plan(S.files,pixels,mode.format,head);S.width=w;S.height=h;S.plan=plan;S.max=mode.format==='u8'?255:65535;S.frame=plan.total;resetParams();controls();
+      const plan=RawCore.plan(S.files,pixels,mode.format,head);S.width=w;S.height=h;S.plan=plan;S.max=mode.format==='u8'?255:65535;S.frame=plan.total;E.clipStart.value=1;E.clipEnd.value=plan.total;E.clipStart.max=E.clipEnd.max=plan.total;updateClipSummary();E.exportStatus.hidden=true;resetParams();controls();
       const label=mode.format==='u8'?'Y8':mode.format==='u16le'?'Y16小端':'Y16大端';E.nativeRange.textContent=`${label} · 0～${S.max}`;
       E.fileStatus.textContent=`${S.files.length} 个文件 · ${w}×${h} · ${label} · 共 ${plan.total} 帧 · ${mode.reason}`;
       E.domainNote.textContent=mode.format==='u8'?'左侧是真实Y8（0～255）；右侧是查看用的显示调整。':'左侧按16位容器0～65535预览；右侧首次加载采用当前末帧1%～99%拉伸。可点击14位范围查看0～16383。';
@@ -204,6 +285,7 @@ const ViewCore=(()=>{
     }catch(e){E.fileStatus.textContent='未能按当前格式读取文件，请检查下面的提示。';error(e);}
   }
   async function acceptFiles(list){
+    if(S.exportJob)return;
     const files=Array.from(list||[]);if(!files.length)return;
     // 浏览器可能把探测器.raw标成image/x-panasonic-raw，不能按image/*一概拒绝。
     if(files.some(f=>/\.(png|jpe?g|bmp|gif|webp|avif|tiff?|html?)$/i.test(f.name))){error(new Error('这里需要Y8/Y16的RAW或BIN数据，请选择原始二进制文件。'));return;}
@@ -215,6 +297,7 @@ const ViewCore=(()=>{
   E.dropZone.addEventListener('dragenter',e=>{e.preventDefault();S.dragDepth++;E.dropZone.classList.add('dragging');});E.dropZone.addEventListener('dragleave',()=>{S.dragDepth=Math.max(0,S.dragDepth-1);if(!S.dragDepth)E.dropZone.classList.remove('dragging');});
   // 只改变16位字节解释方式，保持当前帧、亮度与Gamma；范围按当前帧重新拉伸。
   async function selectEndian(format){
+    if(S.exportJob)return;
     stop();E.format.value=format;
     if(!S.plan){await configure();return;}
     if(S.plan.format===format){syncEndian();return;}
@@ -226,13 +309,13 @@ const ViewCore=(()=>{
   E.endianLE.addEventListener('click',()=>selectEndian('u16le'));E.endianBE.addEventListener('click',()=>selectEndian('u16be'));
   E.apply.addEventListener('click',configure);E.format.addEventListener('change',()=>{if(S.plan&&S.plan.format!=='u8'&&['u16le','u16be'].includes(E.format.value))selectEndian(E.format.value);else configure();});
   for(const id of ['width','height','headerBytes'])E[id].addEventListener('keydown',e=>{if(e.key==='Enter')configure();});
-  function chooseFrame(n){stop();loadFrame(n);}
+  function chooseFrame(n){if(S.exportJob)return;stop();loadFrame(n);}
   E.frameJump.addEventListener('click',()=>chooseFrame(Number(E.frameNumber.value)));E.frameNumber.addEventListener('keydown',e=>{if(e.key==='Enter')chooseFrame(Number(E.frameNumber.value));});E.frameSlider.addEventListener('input',()=>chooseFrame(Number(E.frameSlider.value)));
   E.prev.addEventListener('click',()=>chooseFrame(S.frame-1));E.next.addEventListener('click',()=>chooseFrame(S.frame+1));
   async function tick(){if(!S.playing||!S.plan)return;const start=performance.now();await loadFrame(S.frame>=S.plan.total?1:S.frame+1);if(S.playing)S.timer=setTimeout(tick,Math.max(0,1000/Number(E.fps.value)-(performance.now()-start)));}
-  function togglePlay(){if(S.playing){stop();return;}if(!S.plan||S.plan.total<2)return;S.playing=true;E.play.textContent=E.largePlay.textContent='暂停';tick();}
+  function togglePlay(){if(S.exportJob)return;if(S.playing){stop();return;}if(!S.plan||S.plan.total<2)return;S.playing=true;E.play.textContent=E.largePlay.textContent='暂停';tick();}
   E.play.addEventListener('click',togglePlay);
-  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey||!S.plan)return;if(e.code==='Space'){e.preventDefault();togglePlay();}else if(e.key==='ArrowLeft'){e.preventDefault();chooseFrame(Math.max(1,S.frame-1));}else if(e.key==='ArrowRight'){e.preventDefault();chooseFrame(Math.min(S.plan.total,S.frame+1));}});
+  document.addEventListener('keydown',e=>{if(['INPUT','SELECT','TEXTAREA','BUTTON'].includes(e.target.tagName)||e.ctrlKey||e.metaKey||e.altKey||!S.plan||S.exportJob)return;if(e.code==='Space'){e.preventDefault();togglePlay();}else if(e.key==='ArrowLeft'){e.preventDefault();chooseFrame(Math.max(1,S.frame-1));}else if(e.key==='ArrowRight'){e.preventDefault();chooseFrame(Math.min(S.plan.total,S.frame+1));}});
   for(const k of ['brightness','gamma']){
     E[k].addEventListener('input',()=>{E[k+'Number'].value=E[k].value;renderAdjusted();});
     E[k+'Number'].addEventListener('input',()=>{if(!E[k+'Number'].value)return;E[k].value=E[k+'Number'].value;renderAdjusted();});
@@ -246,6 +329,75 @@ const ViewCore=(()=>{
   E.saveRaw.addEventListener('click',()=>{if(S.raw)download(new Blob([S.raw],{type:'application/octet-stream'}),stem()+'_'+S.plan.format+'.raw');});
   E.saveY8.addEventListener('click',()=>{if(S.values&&renderAdjusted())download(new Blob([S.mapped],{type:'application/octet-stream'}),stem()+'_display_Y8.raw');});
   E.savePng.addEventListener('click',()=>{if(S.values&&renderAdjusted()){const name=stem()+'_display.png';E.adjusted.toBlob(blob=>{if(blob)download(blob,name);else error(new Error('PNG导出失败，请重试。'));},'image/png');}});
+  function selectedRange(){return RawCore.frameRange(S.plan,Number(E.clipStart.value),Number(E.clipEnd.value));}
+  function updateClipSummary(){
+    try{const range=selectedRange();E.clipSummary.textContent=`第 ${range.start}～${range.end} 帧，共 ${range.count} 帧 · RAW ${range.bytes.toLocaleString('en-US')} 字节`;E.clipSummary.classList.remove('range-error');}
+    catch(e){E.clipSummary.textContent=S.plan?e.message:'加载后可选择任意连续帧范围。';E.clipSummary.classList.toggle('range-error',!!S.plan);}
+  }
+  function exportName(range){const first=RawCore.locate(S.plan,range.start);const base=first.file.name.replace(/\.[^.]*$/,'').replace(/[<>:"/\\|?*\x00-\x1f]/g,'_');return `${base}_frames${String(range.start).padStart(4,'0')}-${String(range.end).padStart(4,'0')}_${S.width}x${S.height}`;}
+  function beginExport(label){
+    stop();message('error','');
+    const job={cancelled:false,error:null,encoder:null,disabledStates:exportControls.map(control=>[control,control.disabled])};
+    S.exportJob=job;E.exportStatus.hidden=false;E.exportText.textContent=label;E.exportProgress.value=0;E.cancelExport.hidden=false;E.cancelExport.disabled=false;enabled();return job;
+  }
+  function checkExport(job){if(job.error)throw job.error;if(job.cancelled)throw new DOMException('已取消导出','AbortError');}
+  function endExport(job){
+    if(job.encoder&&job.encoder.state!=='closed')job.encoder.close();
+    for(const [control,disabled]of job.disabledStates)control.disabled=disabled;
+    if(S.exportJob===job)S.exportJob=null;
+    E.cancelExport.hidden=true;enabled();
+  }
+  function exportFailed(e){if(e.name==='AbortError')E.exportText.textContent='已取消导出，未生成文件。';else{E.exportText.textContent='导出失败：'+e.message;error(e);}}
+  const exportYield=()=>new Promise(resolve=>setTimeout(resolve,0));
+  async function saveClipRange(){
+    if(!S.plan||S.exportJob)return;let job;
+    try{
+      const range=selectedRange(),name=exportName(range)+'_'+S.plan.format+'.raw';
+      job=beginExport('正在截取原始帧…');await exportYield();checkExport(job);
+      const blob=new Blob(RawCore.clipParts(S.plan,range.start,range.end),{type:'application/octet-stream'});
+      checkExport(job);download(blob,name);E.exportProgress.value=100;E.exportText.textContent=`已保存 ${range.count} 帧 RAW（${blob.size.toLocaleString('en-US')} 字节）：${name}`;
+    }catch(e){if(job)exportFailed(job.cancelled?new DOMException('已取消导出','AbortError'):e);else error(e);}finally{if(job)endExport(job);}
+  }
+  async function saveAdjustedVideo(){
+    if(!S.plan||!S.values||S.exportJob)return;let job;
+    try{
+      const range=selectedRange(),fps=Number(E.fps.value),plan=S.plan,width=S.width,height=S.height,max=S.max;
+      if(!E.low.value||!E.high.value)throw new Error('请填写黑场值和白场值。');
+      const lut=RawCore.table(max,Number(E.low.value),Number(E.high.value),Number(E.gammaNumber.value),Number(E.brightnessNumber.value));
+      const name=exportName(range)+`_${fps}fps_display.webm`;
+      if(typeof VideoEncoder==='undefined'||typeof VideoFrame==='undefined')throw new Error('当前浏览器不支持视频编码，请使用新版Edge或Chrome打开本工具。');
+      job=beginExport(`正在准备视频：${range.count} 帧，${fps} fps…`);
+      const config={codec:'vp8',width,height,framerate:fps,bitrate:Math.max(1000000,Math.min(20000000,Math.round(width*height*fps*.2))),latencyMode:'quality'};
+      const support=await VideoEncoder.isConfigSupported(config);checkExport(job);
+      if(!support.supported)throw new Error('当前浏览器不支持此尺寸的WebM视频编码，请使用新版Edge或Chrome。');
+      const frames=[],canvas=document.createElement('canvas');canvas.width=width;canvas.height=height;const ctx=canvas.getContext('2d',{alpha:false});
+      const encoder=new VideoEncoder({output(chunk){const data=new Uint8Array(chunk.byteLength);chunk.copyTo(data);frames.push({timestamp:chunk.timestamp,key:chunk.type==='key',data});},error(e){job.error=e;}});
+      job.encoder=encoder;encoder.configure(support.config);
+      let lastYield=performance.now();
+      for(let index=0;index<range.count;index++){
+        checkExport(job);const number=range.start+index,loc=RawCore.locate(plan,number);
+        const bytes=await loc.file.slice(loc.offset,loc.offset+plan.frameBytes).arrayBuffer();checkExport(job);
+        const values=RawCore.decode(bytes,width*height,plan.format),image=ctx.createImageData(width,height);
+        for(let i=0;i<values.length;i++){const v=lut[values[i]],p=i*4;image.data[p]=image.data[p+1]=image.data[p+2]=v;image.data[p+3]=255;}
+        ctx.putImageData(image,0,0);
+        const timestamp=Math.round(index*1e6/fps),duration=Math.round((index+1)*1e6/fps)-timestamp;
+        const frame=new VideoFrame(canvas,{timestamp,duration});
+        try{encoder.encode(frame,{keyFrame:index%Math.max(1,Math.round(fps*2))===0});}finally{frame.close();}
+        if(encoder.encodeQueueSize>=4)await encoder.flush();
+        checkExport(job);E.exportProgress.value=(index+1)*90/range.count;E.exportText.textContent=`正在编码 ${index+1} / ${range.count} 帧（源第 ${number} 帧，${fps} fps）…`;
+        if(performance.now()-lastYield>50){await exportYield();lastYield=performance.now();}
+      }
+      await encoder.flush();checkExport(job);encoder.close();
+      if(frames.length!==range.count)throw new Error('编码帧数不完整，请重新导出。');
+      E.exportText.textContent='正在生成WebM视频…';await exportYield();checkExport(job);
+      frames.sort((a,b)=>a.timestamp-b.timestamp);const blob=VideoCore.webm(frames,width,height,fps);
+      checkExport(job);download(blob,name);E.exportProgress.value=100;E.exportText.textContent=`已导出 ${range.count} 帧，${(range.count/fps).toFixed(2)} 秒，${width}×${height}：${name}`;
+    }catch(e){if(job)exportFailed(job.cancelled?new DOMException('已取消导出','AbortError'):e);else error(e);}finally{if(job)endExport(job);}
+  }
+  for(const id of ['clipStart','clipEnd'])E[id].addEventListener('input',updateClipSummary);
+  E.setClipStart.addEventListener('click',()=>{E.clipStart.value=S.frame;updateClipSummary();});E.setClipEnd.addEventListener('click',()=>{E.clipEnd.value=S.frame;updateClipSummary();});
+  E.saveClip.addEventListener('click',saveClipRange);E.saveVideo.addEventListener('click',saveAdjustedVideo);
+  E.cancelExport.addEventListener('click',()=>{const job=S.exportJob;if(!job)return;job.cancelled=true;if(job.encoder&&job.encoder.state!=='closed')job.encoder.close();E.cancelExport.disabled=true;E.exportText.textContent='正在取消导出…';});
   // 三个预览窗共享同一个源像素中心，缩放和平移不会改写图像缓冲。
   for(const b of zoomButtons)b.addEventListener('click',()=>setZoom(b.dataset.zoom));
   E.centerView.addEventListener('click',centerView);E.largeCenter.addEventListener('click',centerView);
