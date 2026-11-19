@@ -1,123 +1,204 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>工具导航主页</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#165DFF',
-                        secondary: '#36CFC9',
-                        accent: '#FF7D00',
-                        dark: '#1D2129',
-                        light: '#F2F3F5'
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'system-ui', 'sans-serif'],
-                    },
-                }
-            }
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="查看红外 RAW 图像、检测坏点、转换图像格式，以及进行图像校正和噪声分析。">
+    <title>红外图像工具箱</title>
+    <style>
+        :root {
+            font-family: system-ui, "Segoe UI", "Microsoft YaHei", sans-serif;
+            line-height: 1.55;
+            color: #17293c;
+            background: #f1f5f8;
+            --muted: #4a5b6d;
+            --line: #dce6ed;
+            --paper: #fff;
         }
-    </script>
-    <style type="text/tailwindcss">
-        @layer utilities {
-            .tool-card {
-                @apply bg-white rounded-lg shadow-md p-6 text-center hover:shadow-lg transition-shadow duration-300;
-            }
-            .tool-btn {
-                @apply bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-lg text-lg font-medium transition-all duration-200 inline-flex items-center gap-2;
-            }
+
+        *, *::before, *::after { box-sizing: border-box; }
+        body { margin: 0; }
+        h1, h2, h3, p { margin: 0; }
+        .page { max-width: 74rem; margin-inline: auto; padding: 2rem 1.5rem 1.25rem; }
+
+        .hero {
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
+            padding: 2rem 2.25rem;
+            border-radius: 1.125rem;
+            color: #fff;
+            background: linear-gradient(118deg, #102437 15%, #123446 65%, #175451);
+        }
+
+        .hero::before {
+            position: absolute;
+            z-index: -1;
+            inset: 0 0 0 35%;
+            content: "";
+            background-image: linear-gradient(#affff21c 1px, transparent 1px),
+                              linear-gradient(90deg, #affff21c 1px, transparent 1px);
+            background-size: 1.125rem 1.125rem;
+            mask-image: linear-gradient(90deg, transparent, #000);
+            pointer-events: none;
+        }
+
+        .formats { color: #b3ece3; font-size: .875rem; font-weight: 650; letter-spacing: .08em; }
+        h1 { margin-block: .4rem .55rem; font-size: clamp(1.875rem, 4vw, 3rem); line-height: 1.16; }
+        .intro { color: #dce9ee; max-width: 38em; }
+
+        .directory { margin-block: 1.625rem 0; }
+        .directory-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; margin-bottom: .75rem; }
+        .directory-head h2 { font-size: 1.25rem; }
+        .directory-head p { font-size: .875rem; color: var(--muted); }
+
+        .groups { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+        .group {
+            --accent: #0a5d53;
+            --tint: #e3f2ee;
+            display: flex;
+            flex-direction: column;
+            gap: .7rem;
+            min-width: 0;
+            border: 1px solid var(--line);
+            border-radius: .875rem;
+            padding: .9rem;
+            background: #f9fbfc;
+        }
+        .group.convert { --accent: #214f86; --tint: #e7effa; }
+        .group.analyze { --accent: #80531a; --tint: #fbefd9; }
+        .group-heading { display: flex; align-items: center; gap: .65rem; padding: .1rem .175rem .2rem; }
+        .group-heading h3 { font-size: 1.0625rem; }
+        .group-icon {
+            display: grid;
+            flex: none;
+            place-items: center;
+            width: 2.25rem;
+            height: 2.25rem;
+            background: var(--tint);
+            color: var(--accent);
+            border-radius: .55rem;
+        }
+        .group-icon svg { width: 1.25rem; height: 1.25rem; }
+
+        .tool-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .55rem; }
+        .tool-link {
+            display: block;
+            min-height: 5.35rem;
+            padding: .7rem .85rem;
+            border: 1px solid var(--line);
+            border-inline-start: .1875rem solid transparent;
+            border-radius: .625rem;
+            text-decoration: none;
+            color: inherit;
+            background: var(--paper);
+            transition: border-color .15s ease, background-color .15s ease;
+        }
+        .tool-title { display: block; font-weight: 700; font-size: 1.0625rem; margin-bottom: .18rem; }
+        .tool-description { display: block; font-size: .9375rem; color: var(--muted); }
+        .tool-link:hover, .tool-link:focus-visible {
+            border-color: var(--accent);
+            background: var(--tint);
+        }
+        .tool-link:hover .tool-title, .tool-link:focus-visible .tool-title { color: var(--accent); }
+        .tool-link:focus-visible { outline: .16rem solid var(--accent); outline-offset: .125rem; }
+
+        @media (max-width: 52rem) {
+            .groups { grid-template-columns: minmax(0, 1fr); }
+            .page { max-width: 44rem; }
+        }
+        @media (max-width: 38rem) {
+            .page { padding: .85rem .85rem 1rem; }
+            .hero { padding: 1.25rem; }
+            .directory { margin-top: 1.15rem; }
+            .group { padding: .7rem; }
+            .tool-link { min-height: auto; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tool-link { transition: none; }
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen flex flex-col items-center justify-center py-10">
-    <div class="container mx-auto max-w-5xl px-4">
-        <!-- 标题 -->
-        <header class="text-center mb-10">
-            <h1 class="text-[clamp(1.8rem,4vw,3rem)] font-bold text-dark flex items-center justify-center gap-3">
-                <i class="fa fa-wrench text-primary"></i>
-                工具导航中心
-            </h1>
-            <p class="text-gray-500 mt-2 text-lg">选择你需要的工具进入</p>
+<body>
+    <div class="page">
+        <header class="hero">
+            <p class="formats">RAW · Y8 · Y16 · YUY2</p>
+            <h1>红外图像工具箱</h1>
+            <p class="intro">从查看原始帧、排查坏点，到格式转换、图像校正和噪声分析。</p>
         </header>
 
-        <!-- 工具选项 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- Y16图像查看工具 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">Y16图像查看工具</h2>
-                <p class="text-gray-500 mb-6">查看原始Y16格式图像的像素值，以及检测图像中的坏点</p>
-                <a href="bad-point-detector.html" class="tool-btn">
-                    <i class="fa fa-search"></i>
-                    进入工具
-                </a>
+        <main class="directory">
+            <div class="directory-head">
+                <h2 id="directoryTitle">按用途选择</h2>
+                <p>7 个工具</p>
             </div>
+            <nav class="groups" aria-labelledby="directoryTitle">
+                <section class="group" aria-labelledby="viewTitle">
+                    <div class="group-heading">
+                        <span class="group-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                                <rect x="3" y="4" width="18" height="16" rx="2"/>
+                                <path d="m3 16 5-5 4 4 2-2 7 6"/>
+                                <circle cx="16.5" cy="9" r="1.5"/>
+                            </svg>
+                        </span>
+                        <h3 id="viewTitle">查看与坏点检测</h3>
+                    </div>
+                    <ul class="tool-list">
+                        <li><a class="tool-link" href="bad-point-detector.html"><span class="tool-title">Y16 图像查看工具</span><span class="tool-description">查看原始 Y16 图像的像素值、检测坏点。</span></a></li>
+                        <li><a class="tool-link" href="y8-viewer.html"><span class="tool-title">Y8 图像查看工具</span><span class="tool-description">查看原始 Y8 图像的像素值、检测坏点。</span></a></li>
+                        <li><a class="tool-link" href="y16-y8-viewer.html"><span class="tool-title">Y16 / Y8 连续帧查看器</span><span class="tool-description">播放和调节预览，导出视频或截取指定帧段另存 RAW。</span></a></li>
+                    </ul>
+                </section>
 
-            <!-- Y8图像查看工具 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">Y8图像查看工具</h2>
-                <p class="text-gray-500 mb-6">查看原始Y8格式图像的像素值，以及检测图像中的坏点</p>
-                <a href="y8-viewer.html" class="tool-btn">
-                    <i class="fa fa-image"></i>
-                    进入工具
-                </a>
-            </div>
+                <section class="group convert" aria-labelledby="convertTitle">
+                    <div class="group-heading">
+                        <span class="group-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                                <path d="M4 7h16m-4-4 4 4-4 4M20 17H4m4-4-4 4 4 4"/>
+                            </svg>
+                        </span>
+                        <h3 id="convertTitle">格式转换</h3>
+                    </div>
+                    <ul class="tool-list">
+                        <li><a class="tool-link" href="endian-converter.html"><span class="tool-title">大小端转换工具</span><span class="tool-description">在大端与小端之间转换 16 位 RAW 文件。</span></a></li>
+                        <li><a class="tool-link" href="yuy2-splitter.html"><span class="tool-title">YUY2 分离工具</span><span class="tool-description">将 YUY2 连续帧拆为 Y8 亮度与 UV 数据，分别导出 BIN。</span></a></li>
+                    </ul>
+                </section>
 
-            <!-- 新增：Y=K*(X-B) 计算工具 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">Y=K*(X-B) 计算工具</h2>
-                <p class="text-gray-500 mb-6">Y=K*(X-B) 公式快速计算</p>
-                <a href="K_X_B.html" class="tool-btn">
-                    <i class="fa fa-calculator"></i>
-                    进入工具
-                </a>
-            </div>
-
-            <!-- 16位RAW大小端转换工具 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">大小端转换工具</h2>
-                <p class="text-gray-500 mb-6">16位RAW图像大端/小端双向转换</p>
-                <a href="endian-converter.html" class="tool-btn">
-                    <i class="fa fa-exchange"></i>
-                    进入工具
-                </a>
-            </div>
-
-            <!-- YUY2连续帧分离工具 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">YUY2分离工具</h2>
-                <p class="text-gray-500 mb-6">将YUY2连续帧分离为Y8亮度与UV数据，并导出BIN文件</p>
-                <a href="yuy2-splitter.html" class="tool-btn">
-                    <i class="fa fa-columns"></i>
-                    进入工具
-                </a>
-            </div>
-
-            <!-- Y16/Y8连续帧查看器 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">Y16 / Y8 连续帧查看器</h2>
-                <p class="text-gray-500 mb-6">查看Y16/Y8单帧及连续帧图像，支持播放、像素查看和亮度调整</p>
-                <a href="y16-y8-viewer.html" class="tool-btn">
-                    <i class="fa fa-play-circle-o"></i>
-                    进入工具
-                </a>
-            </div>
-
-            <!-- 图像噪声分析 -->
-            <div class="tool-card">
-                <h2 class="text-xl font-semibold text-dark mb-4">图像噪声分析</h2>
-                <p class="text-gray-500 mb-6">分析 RAW 连续帧的时间噪声、横竖条纹和背景不均匀，支持 A/B 对比与结果下载</p>
-                <a href="noise-analysis.html" class="tool-btn">
-                    <i class="fa fa-bar-chart"></i>
-                    进入工具
-                </a>
-            </div>
-        </div>
+                <section class="group analyze" aria-labelledby="analyzeTitle">
+                    <div class="group-heading">
+                        <span class="group-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" focusable="false">
+                                <path d="M4 4v16h16M8 16v-3m5 3V8m5 8v-5"/>
+                            </svg>
+                        </span>
+                        <h3 id="analyzeTitle">校正与分析</h3>
+                    </div>
+                    <ul class="tool-list">
+                        <li><a class="tool-link" href="K_X_B.html"><span class="tool-title">K/B 图像校正</span><span class="tool-description">用 K、B 参数对 X16 执行 K × (X − B) 校正并导出 RAW。</span></a></li>
+                        <li><a class="tool-link" href="noise-analysis.html"><span class="tool-title">图像噪声分析</span><span class="tool-description">测量帧间噪声、横竖条纹和背景不均匀，支持 A/B 对比。</span></a></li>
+                    </ul>
+                </section>
+            </nav>
+        </main>
     </div>
+
+    <script>
+        (() => {
+            // 仅统计正式首页，本地预览不加载统计脚本。
+            const homePath = '/bad-point-detector/';
+            if (location.origin !== 'https://liuyueqiang1.github.io' ||
+                ![homePath, homePath + 'index.html'].includes(location.pathname)) return;
+
+            const counter = document.createElement('script');
+            counter.async = true;
+            counter.dataset.goatcounter = 'https://lyq.goatcounter.com/count';
+            counter.dataset.goatcounterSettings = JSON.stringify({ path: homePath });
+            counter.src = 'https://gc.zgo.at/count.js';
+            document.head.appendChild(counter);
+        })();
+    </script>
 </body>
 </html>
