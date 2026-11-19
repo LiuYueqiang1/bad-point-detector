@@ -1,0 +1,1751 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; worker-src blob:; img-src data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>图像噪声分析</title>
+  <style>
+    :root{--paper:#fff;--bg:#f2f6f8;--ink:#162b3f;--muted:#506477;--line:#d8e3e9;--primary:#075d6d;--soft:#e6f3f3;--blue:#196c9b;--orange:#ad5818;--error:#a1271c;--radius:13px;font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif}
+    *{box-sizing:border-box} [hidden]{display:none!important}
+    body{margin:0;background:var(--bg);color:var(--ink);font-size:1rem;line-height:1.55} button,input,select,textarea{font:inherit;color:inherit}
+    button{cursor:pointer;min-height:40px;padding:8px 12px;border:1px solid #b7c8d3;background:var(--paper);border-radius:7px;font-size:.875rem;font-weight:600;white-space:nowrap}button:hover:enabled{background:#edf5f8;border-color:var(--primary)}button:disabled{cursor:default;opacity:.5}
+    .primary{background:var(--primary);color:#fff;border-color:var(--primary)}.primary:hover:enabled{background:#064b59}.quiet{background:transparent}
+    :focus-visible{outline:3px solid #447fae;outline-offset:3px}
+    .wrap{width:min(1500px,100%);margin:0 auto;padding:0 32px}.site-head{background:#102d3b;color:#fff}.site-head .wrap{min-height:58px;display:flex;align-items:center}.brand{font-weight:650;letter-spacing:.03em}
+    .intro{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:26px 0 20px}.intro h1{font-size:clamp(1.7rem,3.1vw,2.5rem);font-weight:700;letter-spacing:-.03em;line-height:1.18;margin:0}.intro p{margin:8px 0 0;color:var(--muted)}
+    .layout{display:grid;grid-template-columns:minmax(310px,354px) minmax(0,1fr);gap:20px;align-items:start;padding-bottom:36px}.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius)}.settings{padding:18px}.results{min-width:0;display:grid;gap:15px}
+    h2{font-size:1.2rem;line-height:1.25;margin:0}h3{font-size:1rem;line-height:1.35;margin:0}p{margin:0}.muted{color:var(--muted)}.note{font-size:.875rem;color:var(--muted);line-height:1.5}.meta{font-size:.8125rem;color:var(--muted)}
+    fieldset{margin:0;padding:0;border:0;min-width:0}fieldset:disabled .drop{opacity:.6}fieldset .block{margin-top:15px}.block+.block{border-top:1px solid var(--line);padding-top:14px}.block h3{margin-bottom:8px}
+    .segmented{display:flex;gap:6px;padding:4px;background:#ecf2f6;border:1px solid var(--line);border-radius:9px}.segmented label{position:relative;flex:1;text-align:center}.segmented input{position:absolute;opacity:0;width:1px;height:1px}.segmented span{display:block;padding:6px 5px;border:1px solid transparent;border-radius:6px;font-size:.875rem;font-weight:600;cursor:pointer}.segmented input:checked+span{background:var(--paper);border-color:#b8d5d9;color:var(--primary)}.segmented input:focus-visible+span{outline:3px solid #447fae;outline-offset:1px}
+    .drop{padding:11px;border:1px dashed #a5bdc8;border-radius:9px;background:#f8fbfc}.drop+.drop{margin-top:8px}.drop.over{background:var(--soft);border-color:var(--primary)}.drop-title{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:7px}.drop-title strong{font-size:.9375rem}.drop .meta{margin:6px 0 0;overflow-wrap:anywhere}.drop .meta.error{color:var(--error)}.drop-actions{display:flex;gap:6px;flex-wrap:wrap}.drop-actions button{min-height:34px;padding:5px 9px}
+    .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.fields.three{grid-template-columns:repeat(3,minmax(0,1fr))}.field{display:grid;gap:4px;min-width:0;color:var(--ink);font-size:.875rem}.field+.field.separate{margin-top:9px}.fields+.fields,.fields+.field,.field+.fields,.drop+.note{margin-top:9px}
+    input[type=number],input[type=text],select,textarea{width:100%;min-width:0;border:1px solid #b7c8d3;border-radius:7px;background:#fbfdfe;min-height:38px;padding:6px 8px;font-size:.875rem}select{appearance:none;padding-right:23px;background-image:linear-gradient(45deg,transparent 50%,#3f596c 50%),linear-gradient(135deg,#3f596c 50%,transparent 50%);background-position:calc(100% - 11px) center,calc(100% - 7px) center;background-size:4px 4px;background-repeat:no-repeat}textarea{resize:vertical;min-height:58px}
+    details summary{font-size:.9rem;color:var(--primary);font-weight:600;cursor:pointer}.advanced{margin-top:10px;display:grid;gap:9px}.form-footer{margin-top:16px}.run-actions{display:flex;gap:8px}.run-actions .primary{flex:1}.run-status{margin-top:9px;font-size:.875rem;color:var(--muted);overflow-wrap:anywhere}.run-status.error{color:var(--error)}progress{width:100%;height:11px;accent-color:var(--primary);margin-top:7px}
+    .result-head,.section{padding:18px}.result-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}.result-head .note{margin-top:5px;overflow-wrap:anywhere}.downloads{display:flex;gap:7px;flex-wrap:wrap}.downloads .primary{min-width:106px}.placeholder{min-height:390px;display:grid;align-content:center;justify-items:center;text-align:center;gap:9px;padding:26px}.placeholder .empty-icon{width:64px;height:50px;display:flex;align-items:flex-end;justify-content:center;gap:5px;border-radius:10px;background:var(--soft);padding:9px;margin-bottom:5px}.empty-icon i{width:5px;background:var(--primary);border-radius:2px}.empty-icon i:nth-child(1){height:13px}.empty-icon i:nth-child(2){height:26px}.empty-icon i:nth-child(3){height:18px}.empty-icon i:nth-child(4){height:30px}.empty-icon i:nth-child(5){height:16px}
+    .result-detail{display:grid;gap:15px}.section-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:11px}.kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.kpi{padding:10px 11px;background:#f4f8fa;border:1px solid var(--line);border-radius:8px;font-size:.875rem}.kpi dl{margin:6px 0 0;display:flex;column-gap:10px;row-gap:4px;flex-wrap:wrap;align-items:baseline}.kpi dl div{display:flex;gap:4px;align-items:baseline}.kpi dt,.kpi .delta{font-size:.8125rem;color:var(--muted)}.kpi dd{font-size:1.13rem;font-weight:650;margin:0;font-variant-numeric:tabular-nums}.kpi .delta{margin-top:4px}.comparison{margin-top:9px;background:#eef6f6;border-radius:7px;padding:8px 10px;font-size:.875rem}
+    .map-grid,.plot-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.map-card,.plot-card{margin:0;min-width:0;border:1px solid var(--line);border-radius:9px;padding:10px}.map-canvases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;margin-top:7px}.map-canvases.single{grid-template-columns:minmax(0,1fr)}.map-label{font-size:.8125rem;color:var(--muted)}.map-card canvas{display:block;width:100%;height:auto;image-rendering:pixelated;background:#142837;border-radius:4px}.colorbar{margin-top:8px;height:8px;border-radius:4px;background:linear-gradient(90deg,#14528b,#f6f5ef,#b34a25)}.colorbar.positive{background:linear-gradient(90deg,#14283d,#175b8c,#6fc0c4,#fff0b0)}.scale-label{display:flex;justify-content:space-between;gap:4px;font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}.pixel-readout{margin-top:6px;min-height:1.4em;overflow-wrap:anywhere}
+    .legend{display:flex;gap:12px}.legend span::before{content:"";display:inline-block;width:16px;height:3px;background:var(--blue);vertical-align:middle;margin-right:5px}.legend span:nth-child(2)::before{background:var(--orange)}.plot-card canvas{display:block;width:100%;height:auto;margin-top:4px}
+    .table-wrap{overflow:auto;margin:8px 0;max-width:100%}table{border-collapse:collapse;width:100%;font-size:.875rem;font-variant-numeric:tabular-nums}th,td{padding:7px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}th:first-child,td:first-child,#metricsTable :is(th,td):nth-child(2){text-align:left}th{background:#eff5f7;font-weight:650}tbody tr:nth-child(even){background:#f8fbfc}.metric-section details+details{margin-top:13px}.downloads-status{margin-top:4px;flex-basis:100%}
+    .metric-guide > summary {
+      padding: 12px 18px;
+      line-height: 1.5;
+      font-size: 1rem;
+      list-style-position: inside;
+    }
+    .guide-summary-hint {
+      margin-inline-start: .65em;
+      color: var(--muted);
+      font-size: .8125rem;
+      font-weight: 400;
+    }
+    .guide-content { border-top: 1px solid var(--line); padding: 16px 18px 18px; }
+    .guide-content p { margin: 6px 0; }
+    .guide-content ul { padding-inline-start: 1.3em; margin: 8px 0; }
+    .guide-content li + li { margin-top: 5px; }
+    .guide-example {
+      margin: 14px 0 16px;
+      padding: 10px 12px;
+      background: var(--soft);
+      border-inline-start: 3px solid var(--primary);
+      border-radius: 6px;
+    }
+    .guide-example p { margin-bottom: 0; }
+    .guide-cards {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 9px 0 14px;
+    }
+    .guide-cards > div {
+      padding: 9px 11px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow-wrap: anywhere;
+      background: #f8fbfc;
+      scroll-margin-block-start: 12px;
+    }
+    .guide-cards > div:target { border-color: var(--primary); background: var(--soft); }
+    .guide-cards dt, .guide-list dt { font-weight: 650; }
+    .guide-cards dd, .guide-list dd { margin-inline-start: 0; color: var(--muted); }
+    .guide-cards p, .guide-list dd { margin: 4px 0; font-size: .9375rem; }
+    .guide-field { font: .8125rem Consolas, monospace; color: var(--muted); overflow-wrap: anywhere; }
+    .guide-more { padding: 8px 0; border-top: 1px solid var(--line); }
+    .guide-list { margin: 8px 0 0; }
+    .guide-list > div + div { margin-top: 10px; }
+    .definition-link { color: inherit; text-decoration: underline dotted; text-underline-offset: .22em; }
+    .definition-link:hover { color: var(--primary); }
+    .unit-links { display: flex; gap: 10px; flex-wrap: wrap; align-items: baseline; }
+    .unit-links a { color: var(--primary); }
+    @media(max-width:1050px){.wrap{padding:0 18px}.layout{gap:14px;grid-template-columns:minmax(290px,320px) minmax(0,1fr)}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:820px){.layout{grid-template-columns:minmax(0,1fr)}.kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:560px){.wrap{padding:0 12px}.intro{align-items:flex-start;flex-direction:column;padding-top:18px}.layout{gap:12px}.settings,.section,.result-head{padding:13px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.map-grid,.plot-grid{grid-template-columns:minmax(0,1fr)}.placeholder{min-height:230px}}
+    @media(max-width:560px) {
+      .metric-guide > summary, .guide-content { padding: 12px 13px; }
+      .guide-summary-hint { display: block; margin-inline-start: 1.2em; }
+      .guide-cards { grid-template-columns: minmax(0, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<header class="site-head"><div class="wrap"><span class="brand">RAW 图像分析</span></div></header>
+  <main class="wrap">
+  <div class="intro"><div><h1>图像噪声分析</h1><p>查看时间噪声、行列纹和背景差异。文件在本机浏览器内处理。</p></div><button type="button" id="demoButton" class="quiet">运行合成示例</button></div>
+    <div class="layout">
+      <aside class="panel settings" aria-labelledby="settingTitle">
+        <h2 id="settingTitle">分析设置</h2>
+        <form id="analysisForm" novalidate>
+          <fieldset id="controls">
+            <div class="block">
+              <div class="segmented" role="group" aria-label="分析模式"><label><input type="radio" name="mode" value="single" checked><span>单组分析</span></label><label><input type="radio" name="mode" value="pair"><span>A/B 对照</span></label></div>
+            </div>
+            <div class="block">
+              <h3>输入数据</h3>
+              <div class="drop" id="dropA"><div class="drop-title"><strong>A 组</strong><span class="meta">原始 / 处理前</span></div><div class="drop-actions"><button type="button" data-pick="filesA">选择文件</button><button type="button" data-pick="folderA">选择目录</button><button type="button" data-clear="A" hidden>清除</button></div><input id="filesA" type="file" accept=".raw,.bin" multiple hidden><input id="folderA" type="file" webkitdirectory multiple hidden><p id="sourceA" class="meta" aria-live="polite">可拖入多帧文件或多个单帧文件</p></div>
+              <div class="drop" id="dropB" hidden><div class="drop-title"><strong>B 组</strong><span class="meta">对照 / 处理后</span></div><div class="drop-actions"><button type="button" data-pick="filesB">选择文件</button><button type="button" data-pick="folderB">选择目录</button><button type="button" data-clear="B" hidden>清除</button></div><input id="filesB" type="file" accept=".raw,.bin" multiple hidden><input id="folderB" type="file" webkitdirectory multiple hidden><p id="sourceB" class="meta" aria-live="polite">可拖入多帧文件或多个单帧文件</p></div>
+              <p class="note">无文件头，逐帧逐行存储。每组至少两帧。</p>
+            </div>
+            <div class="block">
+              <h3>采集参数</h3>
+              <div class="fields"><label class="field" for="format">数据格式<select id="format"><option value="Y16LE">Y16 小端</option><option value="Y16BE">Y16 大端</option><option value="X16LE">X16 小端</option><option value="X16BE">X16 大端</option><option value="Y8">Y8</option></select></label><label class="field" for="scene">场景<select id="scene"><option value="uniform">固定均匀面</option><option value="scene">实景 / 运动画面</option></select></label></div>
+              <div class="fields three"><label class="field" for="width">宽（px）<input id="width" type="number" min="2" step="1" value="640"></label><label class="field" for="height">高（px）<input id="height" type="number" min="2" step="1" value="512"></label><label class="field" for="fps">帧率（Hz）<input id="fps" type="number" min="0" step="any" value="50"></label></div>
+              <label class="field" for="preset">分辨率快捷设置<select id="preset"><option value="384x288">384 × 288</option><option value="640x512" selected>640 × 512</option><option value="1280x1024">1280 × 1024</option><option value="custom">自定义</option></select></label>
+            </div>
+            <div class="block">
+              <h3>分析范围</h3>
+              <div class="fields"><label class="field" for="frameStart">起始帧<input id="frameStart" type="number" min="1" step="1" placeholder="首帧"></label><label class="field" for="frameEnd">结束帧<input id="frameEnd" type="number" min="2" step="1" placeholder="末帧"></label></div>
+              <label class="field" for="roi">ROI（x1 y1 x2 y2）<input id="roi" type="text" placeholder="留空分析全幅" autocomplete="off"></label><p class="note">帧段和 ROI 从 1 开始，包含两端。</p>
+            </div>
+            <details class="block"><summary>坏点、位移与焦温</summary><div class="advanced">
+              <label class="field" for="badXY">已知坏点 x y<textarea id="badXY" rows="2" placeholder="每行一对坐标，可留空"></textarea></label>
+              <label class="field" for="shiftXY">后半段平移 dx dy<input id="shiftXY" type="text" placeholder="向右、向下为正，可留空" autocomplete="off"></label>
+              <label class="field" for="temperatureC" id="temperatureField" hidden>A、B 采集焦温（℃）<input id="temperatureC" type="text" placeholder="例如 25 30" autocomplete="off"></label>
+            </div></details>
+          </fieldset>
+          <div class="form-footer"><div class="run-actions"><button class="primary" id="runButton" type="submit">开始分析</button><button id="cancelButton" type="button" hidden>取消</button></div><progress id="analysisProgress" max="1" value="0" aria-label="分析进度" hidden></progress><p id="runStatus" class="run-status" role="status" aria-live="polite">选择数据后开始分析。</p></div>
+        </form>
+      </aside>
+      <section class="results" aria-labelledby="resultTitle">
+        <div class="panel result-head"><div><h2 id="resultTitle">分析结果</h2><p id="resultMeta" class="note">等待计算</p></div><div class="downloads"><button type="button" id="downloadSummary" disabled>下载汇总 CSV</button><button type="button" id="downloadZip" class="primary" disabled>下载结果包</button></div><p id="downloadStatus" class="note downloads-status" role="status" hidden></p></div>
+        <details id="metricGuide" class="panel metric-guide">
+          <summary id="metricGuideSummary">指标怎么算、怎么看<span class="guide-summary-hint">常用指标、A/B 实例和计算口径</span></summary>
+          <div class="guide-content">
+            <h3>先看帧间变化，再看平均图上的底纹</h3>
+            <p>时域指标看同一个像素随时间波动多少。空间指标先把多帧平均成一张图，再看图上各处相差多少。RMS（均方根）用平方平均后开根号表示波动幅度，较大的偏差占更大权重。</p>
+            <ul>
+              <li><strong>固定均匀面</strong> 先看去共模时域 RMS，判断局部像素随时间是否稳定。再看行列 HF65、HP9 二维残余和 65×65 背景，分别定位横竖纹、细颗粒和宽背景。</li>
+              <li><strong>实景或慢移画面</strong> 在墙面等较平坦区域选同一 ROI 和帧段，结合 HP9 图、前后半段相关和原画面核对。边缘、纹理及运动也会抬高高通和帧差指标。</li>
+              <li><strong>A/B 算法对照</strong> 使用同一批对齐的输入帧和相同的格式、帧率、ROI、坏点设置。幅度项在 A 大于零时计算 100 × (B−A) / A，例如 −20% 表示该项幅度减少 20%。还要核对细节和其他分量。</li>
+            </ul>
+            <div class="guide-example">
+              <h3>U01 / U02 实采例子</h3>
+              <p>全幅 50 帧的去共模时域 RMS 分别为 3.848 和 3.850 DN，帧间波动接近。65×65 背景 RMS 分别为 1.115 和 8.697 DN，U02 更明显的差异出现在大范围背景上。</p>
+            </div>
+
+            <h3>概览里的六项指标</h3>
+            <dl class="guide-cards">
+              <div id="guide-temporal_total_rms" tabindex="-1">
+                <dt>时域总 RMS</dt>
+                <dd>
+                  <code class="guide-field">temporal_total_rms</code>
+                  <p><strong>怎么算</strong> 对所选的 N 帧，每个像素先减去自己的时间均值，按 N−1 算样本方差。把 ROI 内所有像素的方差平均后开根号。</p>
+                  <p><strong>看什么</strong> 同一位置随时间的总波动，包含全画面同步变亮或变暗。</p>
+                </dd>
+              </div>
+              <div id="guide-temporal_no_common_rms" tabindex="-1">
+                <dt>去共模时域 RMS</dt>
+                <dd>
+                  <code class="guide-field">temporal_no_common_rms</code>
+                  <p><strong>怎么算</strong> 在每帧的像素波动中再减去 ROI 的平均波动。动态行、动态列和二维残余的 RMS 平方相加后开根号。</p>
+                  <p><strong>看什么</strong> 排除整幅亮度起伏后的时间噪声，适合比较均匀面局部稳定性。</p>
+                </dd>
+              </div>
+              <div id="guide-low65_rms" tabindex="-1">
+                <dt>65×65 背景 RMS</dt>
+                <dd>
+                  <code class="guide-field">low65_rms</code>
+                  <p><strong>怎么算</strong> 对整幅时间均值图做 65×65 滑动均值，裁出 ROI、减去 ROI 的平均值，再算 RMS。</p>
+                  <p><strong>看什么</strong> 宽亮斑、暗角和缓慢梯度等大范围不均匀。</p>
+                </dd>
+              </div>
+              <div id="guide-row_hf65_rms" tabindex="-1">
+                <dt>横纹 HF65 RMS</dt>
+                <dd>
+                  <code class="guide-field">row_hf65_rms</code>
+                  <p><strong>怎么算</strong> 时间均值图在 ROI 内按行取平均。行轮廓减去其 65 点居中滑动均值，再减轮廓均值后算 RMS。</p>
+                  <p><strong>看什么</strong> 一行整体偏亮或偏暗时形成的横向条纹。</p>
+                </dd>
+              </div>
+              <div id="guide-column_hf65_rms" tabindex="-1">
+                <dt>竖纹 HF65 RMS</dt>
+                <dd>
+                  <code class="guide-field">column_hf65_rms</code>
+                  <p><strong>怎么算</strong> 时间均值图在 ROI 内按列取平均。列轮廓减去其 65 点居中滑动均值，再减轮廓均值后算 RMS。</p>
+                  <p><strong>看什么</strong> 一列整体偏亮或偏暗时形成的纵向条纹。</p>
+                </dd>
+              </div>
+              <div id="guide-hp9_2d_rms" tabindex="-1">
+                <dt>HP9 二维残余 RMS</dt>
+                <dd>
+                  <code class="guide-field">hp9_2d_rms</code>
+                  <p><strong>怎么算</strong> 整幅时间均值图减去 9×9 滑动均值，再裁 ROI，去均值并扣掉整行、整列分量，最后对剩余量算 RMS。</p>
+                  <p><strong>看什么</strong> 细颗粒及其他二维底纹。有限帧平均后仍会留下部分随机波动。</p>
+                </dd>
+              </div>
+            </dl>
+
+            <details class="guide-more">
+              <summary>时域分量与帧差估计</summary>
+              <dl class="guide-list">
+                <div><dt>时域共模、行、列和残余</dt><dd>先减每个像素的时间均值，再按每帧拆成整个 ROI 同步变化、各行同步变化、各列同步变化和剩余二维变化。四项用同一个 N−1 归一化。四项 RMS 的平方之和等于时域总 RMS 的平方，<code class="guide-field">temporal_closure</code> 记录数值计算误差。</dd></div>
+                <div><dt>相邻帧差等效 RMS / MAD</dt><dd>相邻帧相减。<code class="guide-field">pair_rms_equiv</code> 每对帧差去均值后算 RMS ÷ √2，再对各对作均方根汇总。<code class="guide-field">pair_mad_equiv</code> 取帧差相对其中位数的绝对偏差中位数，除以 0.67449 × √2，再取各对中位数。MAD 对少量异常值较稳健，归一化参考高斯噪声。两者作为单帧噪声估计时，需有静止、近似等方差且帧间独立的输入。时域滤波会改变这个关系。</dd></div>
+                <div><dt>混合差分 MAD</dt><dd><code class="guide-field">pair_mixed_mad_equiv</code> 在相邻帧差上再做 2×2 混合差分，抵消可加的行列偏移。用 MAD ÷ (0.67449 × √8)，再取各对中位数，观察局部波动。</dd></div>
+                <div><dt>32×32 拉普拉斯估计</dt><dd><code class="guide-field">laplace32_proxy</code> 测每帧中心像素的 4 倍减上下左右邻点之和的绝对值。在 ROI 左上起算的完整 32×32 块中，先取块内中位数，再取各块排序后的第 ⌈块数/4⌉ 项，除以 0.67449 × √20，最后取各帧中位数。块需至少 75% 有效样本。它反映偏平坦区域的高频起伏，也受真实纹理影响。</dd></div>
+                <div><dt>整体均值与帧均值峰峰值</dt><dd><code class="guide-field">mean</code> 是帧段与 ROI 内的整体平均。<code class="guide-field">frame_mean_ptp</code> 是逐帧 ROI 均值的最大值减最小值，用来观察亮度漂移幅度。<code class="guide-field">frame_count</code> 是实际纳入计算的帧数。</dd></div>
+                <div><dt>相邻相关和恒定像素比例</dt><dd><code class="guide-field">temporal_lag1</code> 用去像素时间均值及帧共模的波动，比较相邻帧是否相似。<code class="guide-field">residual_vertical_lag1</code> 与 <code class="guide-field">residual_horizontal_lag1</code> 在去共模、去行列后的残余上看纵向和横向邻点是否同向变化。<code class="guide-field">zero_temporal_std_pct</code> 表示分析帧段中码值恒定的像素比例。</dd></div>
+              </dl>
+            </details>
+            <details class="guide-more">
+              <summary>空间分量、滤波尺度与图像色标</summary>
+              <dl class="guide-list">
+                <div><dt>均值图空间总量、行、列和残余</dt><dd><code class="guide-field">spatial_*_rms</code> 根据时间均值图 ROI 去全局均值后计算。总量包含宽背景，行、列和二维残余分别衡量空间图上的横纹、竖纹与其他起伏。<code class="guide-field">spatial_closure</code> 是分解的平方和误差。</dd></div>
+                <div><dt>HP3、HP9 和不同尺度的背景</dt><dd>HP3 和 HP9 分别减去整幅时间均值图的 3×3 和 9×9 均值。HP9 在 ROI 内去均值后，还给出总量、行、列和二维 RMS，<code class="guide-field">hp9_closure</code> 记录平方和误差。<code class="guide-field">band9_25_rms</code> 是 9×9 和 25×25 均值图之差的去均值 RMS，<code class="guide-field">band25_65_rms</code> 对应 25×25 和 65×65。可比较不同尺度的起伏，一维和二维滑动均值均使用边界复制。</dd></div>
+                <div><dt>更细的条纹与上下差异</dt><dd><code class="guide-field">row_hf65_then9_rms</code>、<code class="guide-field">column_hf65_then9_rms</code> 在 HF65 轮廓上再减 9 点滑动均值并去均值，用于观察更细的纹。<code class="guide-field">top_minus_bottom</code> 是 ROI 上边缘减下边缘的平均值差，上下各取最多 64 行且互不重叠。正值表示上方较亮。</dd></div>
+                <div><dt>空间图怎么看</dt><dd>去均值图、低频背景和 HP9 二维残余图用有符号色标，蓝色代表负值，暖色代表正值。时域标准差图显示每个像素随时间的样本标准差，色标从零起。同一指标的 A、B 图共用色标，读图时看实际刻度。</dd></div>
+              </dl>
+            </details>
+            <details class="guide-more">
+              <summary>频谱、周期相位与分段相关</summary>
+              <dl class="guide-list">
+                <div><dt>行列频谱与周期相位</dt><dd>对 HF65 轮廓去均值、加 Hann 窗后看正频率功率。0.125 cycles/pixel 的峰对应约 8 像素重复间隔。周期相位按原图坐标对 2、4、8、16 像素分组，比较各相位均值的峰峰值及投影能量占比。峰和占比较大的周期值得和原图、采集链路一起核对。</dd></div>
+                <div><dt>前后半段相关</dt><dd><code class="guide-field">split_row_hf65_corr</code>、<code class="guide-field">split_column_hf65_corr</code> 和 <code class="guide-field">split_hp9_2d_corr</code> 分别比较前后半段均值图的行纹、列纹和 HP9 二维残余。正相关越接近 1，表示图样越相似。静止实景的真实结构也可能保持相似。</dd></div>
+                <div><dt>有平移时的实景诊断</dt><dd>输入后半段相对前半段的整数位移 dx dy，向右、向下为正。在同一重叠区域，分别比较原探测器坐标与场景平移对齐后的二维残余。可借此判断纹理更贴近探测器还是随场景移动。</dd></div>
+              </dl>
+            </details>
+            <details class="guide-more">
+              <summary>单位、坏点、焦温和缺项</summary>
+              <dl class="guide-list">
+                <div><dt>单位与缺项</dt><dd>Y16 / X16 用 DN（码值），Y8 用 gray（灰度级）。分开比较不同位宽与调光条件。换算 NETD 需要温度响应标定。表格中的 — 与 CSV 中的 NaN 表示未计算或无定义，例如缺少位移、ROI 内无合格的 32×32 块或相关分母为零。</dd></div>
+                <div><dt>已知坏点</dt><dd>每帧用该点可用四邻域的均值填补。拉普拉斯计算跳过五点支撑中碰到已知坏点的样本。比较两组时使用相同坏点设置。</dd></div>
+                <div><dt>均匀面焦温对照</dt><dd>先将 A、B 两张均值图各自去均值，再求差图的 RMS。填写两组焦温后，用该 RMS 除以绝对温差，表示这一对数据的空间变化幅度，单位为 DN/℃ 或 gray/℃。</dd></div>
+              </dl>
+            </details>
+            <p class="meta">计算口径参考 RTD6122 噪声分析标准模型 118 的 README 和 MATLAB 实现。</p>
+          </div>
+        </details>
+        <div id="emptyState" class="panel placeholder"><span class="empty-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><h2>等待分析数据</h2><p class="muted">载入 RAW / BIN 后查看指标、空间图和时序曲线。</p><p class="note">可先运行合成示例，检查 A/B 对照和下载内容。</p></div>
+        <div id="resultDetail" class="result-detail" hidden>
+          <section class="panel section"><div class="section-heading"><h2>指标概览</h2><div class="unit-links"><span id="unitLabel" class="meta"></span><a id="showMetricGuide" class="note" href="#metricGuideSummary">查看指标说明</a></div></div><div id="kpis" class="kpis"></div><p id="comparison" class="comparison" hidden></p><p id="sceneNote" class="note"></p></section>
+          <section class="panel section"><div class="section-heading"><h2>空间图</h2><span class="meta">同一指标的 A、B 图共用色标</span></div><div id="mapGrid" class="map-grid"></div><p id="pixelReadout" class="note pixel-readout">移动到图像上查看原图坐标和数值。</p></section>
+          <section class="panel section"><div class="section-heading"><h2>时序与轮廓</h2><div id="chartLegend" class="legend meta"></div></div><div id="plotGrid" class="plot-grid"></div></section>
+          <section class="panel section metric-section"><div class="section-heading"><h2>详细数据</h2><span class="meta">— 表示未定义或未计算</span></div><details><summary>完整统计指标</summary><div id="metricsTable" class="table-wrap"></div></details><details id="frequencyDetails"><summary>行列频谱</summary><div id="spectrumGrid" class="plot-grid"></div></details><details><summary>周期相位和分段相关</summary><div id="diagnosticTables"></div></details></section>
+        </div>
+      </section>
+    </div>
+  </main>
+  <script id="noiseCore">
+const NoiseCore = (() => {
+  const NORMAL_MAD = 0.6744897501960817;
+  const FORMATS = ['Y16LE', 'Y16BE', 'X16LE', 'X16BE', 'Y8'];
+  const BANDS = ['hp3', 'hp9', 'band9_25', 'band25_65'];
+
+  function validateOptions(input, hasB) {
+    const {width, height, fps, format, scene} = input;
+    if (![width, height].every(n => Number.isSafeInteger(n) && n >= 2) ||
+        !Number.isSafeInteger(width * height * 2)) throw new Error('宽、高须为不小于 2 的整数。');
+    if (!(Number.isFinite(fps) && fps > 0)) throw new Error('帧率须大于 0。');
+    if (!FORMATS.includes(format) || !['uniform', 'scene'].includes(scene)) throw new Error('请选择数据格式和场景。');
+    const roi = input.roi.length ? input.roi : [1, 1, width, height];
+    const [x1, y1, x2, y2] = roi;
+    if (roi.length !== 4 || !roi.every(n => Number.isSafeInteger(n) && n >= 1) ||
+        x1 >= x2 || y1 >= y2 || x2 > width || y2 > height) throw new Error('ROI 须填图内的 x1 y1 x2 y2，至少 2×2 像素。');
+    const frames = input.frames;
+    if (frames.length && (frames.length !== 2 || !frames.every(n => Number.isSafeInteger(n) && n >= 1) ||
+        frames[0] >= frames[1])) throw new Error('请填写起止帧，连续范围至少包含两帧。');
+    const bad = new Map();
+    for (const [x, y] of input.badXY) {
+      if (!Number.isSafeInteger(x) || !Number.isSafeInteger(y) || x < 1 || x > width ||
+          y < 1 || y > height) throw new Error('坏点须为图内的整数坐标 x y。');
+      bad.set((y - 1) * width + x - 1, [x, y]);
+    }
+    const badXY = [...bad.values()].sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+    const shiftXY = input.shiftXY;
+    if (shiftXY.length && (shiftXY.length !== 2 || !shiftXY.every(Number.isSafeInteger) ||
+        Math.abs(shiftXY[0]) > x2 - x1 - 1 || Math.abs(shiftXY[1]) > y2 - y1 - 1)) {
+      throw new Error('平移须为整数 dx dy，平移后 ROI 至少重叠 2×2 像素。');
+    }
+    const temperatureC = input.temperatureC;
+    if (temperatureC.length && (!hasB || scene !== 'uniform' || temperatureC.length !== 2 ||
+        !temperatureC.every(Number.isFinite) || temperatureC[1] === temperatureC[0] ||
+        !Number.isFinite(temperatureC[1] - temperatureC[0]))) {
+      throw new Error('焦温对照须使用两组均匀面，并填写不同的 A、B 采集焦温。');
+    }
+    return {width, height, fps, format, scene, roi, frames, badXY, shiftXY, temperatureC};
+  }
+
+  function describe(source, options, label) {
+    const files = [...source.files];
+    const frameBytes = options.width * options.height * (options.format === 'Y8' ? 1 : 2);
+    const prefix = label + ' 组';
+    if (!files.length) throw new Error(prefix + '请选择 RAW / BIN 文件。');
+    if (files.some(file => !/\.(raw|bin)$/i.test(file.name))) throw new Error(prefix + '仅接受 RAW / BIN 文件。');
+    const separate = source.directory || files.length > 1;
+    if (separate) {
+      if (files.some(file => file.size !== frameBytes)) {
+        throw new Error(prefix + '每个单帧文件须为 ' + frameBytes.toLocaleString('zh-CN') + ' 字节。多帧文件请单独选择。');
+      }
+      const numbered = files.map(file => ({file, suffix: file.name.match(/(\d+)\.(raw|bin)$/i)}));
+      if (numbered.every(item => item.suffix)) {
+        for (const item of numbered) item.number = Number(item.suffix[1]);
+        numbered.sort((a, b) => a.number - b.number);
+        if (numbered.some((item, i) => !Number.isSafeInteger(item.number) ||
+            (i > 0 && item.number - numbered[i - 1].number !== 1))) {
+          throw new Error(prefix + '单帧文件的数字尾号重复或不连续。');
+        }
+      } else {
+        numbered.sort((a, b) => {
+          const left = a.file.name.toLowerCase(), right = b.file.name.toLowerCase();
+          return left < right ? -1 : left > right ? 1 : 0;
+        });
+      }
+      for (let i = 0; i < files.length; i++) files[i] = numbered[i].file;
+    } else if (files[0].size % frameBytes !== 0) {
+      throw new Error(prefix + '文件大小不是每帧 ' + frameBytes.toLocaleString('zh-CN') + ' 字节的整数倍。请检查尺寸、位宽和文件头。');
+    }
+    const total = separate ? files.length : files[0].size / frameBytes;
+    if (total < 2) throw new Error(prefix + '至少需要两帧。');
+    const [start, end] = options.frames.length ? options.frames : [1, total];
+    if (end > total) throw new Error(prefix + '只有 ' + total + ' 帧，所选帧段超出范围。');
+    return {label, files, separate, total, start, end, frameBytes, sourceName: source.name || files[0].name};
+  }
+
+  function makeBadSupport(options) {
+    const {width, height, badXY} = options;
+    const known = new Uint8Array(width * height);
+    const invalidLaplace = new Uint8Array(known.length);
+    for (const [x, y] of badXY) known[(y - 1) * width + x - 1] = 1;
+    const points = badXY.map(([x, y]) => {
+      const index = (y - 1) * width + x - 1;
+      const candidates = [];
+      if (x > 1) candidates.push(index - 1);
+      if (x < width) candidates.push(index + 1);
+      if (y > 1) candidates.push(index - width);
+      if (y < height) candidates.push(index + width);
+      invalidLaplace[index] = 1;
+      for (const neighbor of candidates) invalidLaplace[neighbor] = 1;
+      const neighbors = candidates.filter(neighbor => !known[neighbor]);
+      if (!neighbors.length) throw new Error('坏点 (' + x + ', ' + y + ') 的四邻域没有可用像素。');
+      return {index, neighbors};
+    });
+    return {points, invalidLaplace};
+  }
+
+  async function readFrame(info, number, options, support, target) {
+    const file = info.files[info.separate ? number - 1 : 0];
+    const offset = info.separate ? 0 : (number - 1) * info.frameBytes;
+    const buffer = await file.slice(offset, offset + info.frameBytes).arrayBuffer();
+    if (buffer.byteLength !== info.frameBytes) throw new Error(info.label + ' 组第 ' + number + ' 帧读取不完整。');
+    if (options.format === 'Y8') {
+      target.set(new Uint8Array(buffer));
+    } else {
+      const bytes = new DataView(buffer), little = options.format.endsWith('LE');
+      for (let i = 0; i < target.length; i++) target[i] = bytes.getUint16(i * 2, little);
+    }
+    for (const {index, neighbors} of support.points) {
+      let sum = 0;
+      for (const neighbor of neighbors) sum += target[neighbor];
+      target[index] = sum / neighbors.length;
+    }
+  }
+
+  function regionOf([x1, y1, x2, y2]) {
+    return {x: x1 - 1, y: y1 - 1, w: x2 - x1 + 1, h: y2 - y1 + 1};
+  }
+
+  function crop(image, stride, region, output = new Float64Array(region.w * region.h)) {
+    for (let y = 0; y < region.h; y++) {
+      const start = (y + region.y) * stride + region.x;
+      output.set(image.subarray(start, start + region.w), y * region.w);
+    }
+    return output;
+  }
+
+  function mean(values) {
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) sum += values[i];
+    return sum / values.length;
+  }
+
+  function rms(values, center = 0) {
+    let sum = 0;
+    for (let i = 0; i < values.length; i++) {
+      const delta = values[i] - center;
+      sum += delta * delta;
+    }
+    return Math.sqrt(sum / values.length);
+  }
+
+  function difference(a, b, output = new Float64Array(a.length)) {
+    for (let i = 0; i < a.length; i++) output[i] = a[i] - b[i];
+    return output;
+  }
+
+  function componentBuffers(w, h) {
+    return {centered: new Float64Array(w * h), row: new Float64Array(h),
+      column: new Float64Array(w), residual: new Float64Array(w * h), common: 0};
+  }
+
+  function components(values, w, h, out = componentBuffers(w, h)) {
+    const {centered, row, column, residual} = out;
+    out.common = mean(values);
+    column.fill(0);
+    for (let y = 0; y < h; y++) {
+      let rowSum = 0;
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x, value = values[i] - out.common;
+        centered[i] = value;
+        rowSum += value;
+        column[x] += value;
+      }
+      row[y] = rowSum / w;
+    }
+    for (let x = 0; x < w; x++) column[x] /= h;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = y * w + x;
+        residual[i] = centered[i] - row[y] - column[x];
+      }
+    }
+    return out;
+  }
+
+  // 三路划分的顺序统计量保留 MATLAB 对奇偶样本数的中位数定义。
+  function median(values, length = values.length) {
+    if (!length) return NaN;
+    const middle = length >> 1;
+    let lo = 0, hi = length - 1;
+    while (lo < hi) {
+      const a = values[lo], b = values[(lo + hi) >> 1], c = values[hi];
+      const pivot = Math.max(Math.min(a, b), Math.min(Math.max(a, b), c));
+      let left = lo, right = hi, i = lo;
+      while (i <= right) {
+        const v = values[i];
+        if (v < pivot) {
+          values[i++] = values[left];
+          values[left++] = v;
+        } else if (v > pivot) {
+          values[i] = values[right];
+          values[right--] = v;
+        } else {
+          i++;
+        }
+      }
+      if (middle < left) hi = left - 1;
+      else if (middle > right) lo = right + 1;
+      else break;
+    }
+    if (length % 2) return values[middle];
+    let lower = values[0];
+    for (let i = 1; i < middle; i++) if (values[i] > lower) lower = values[i];
+    return (lower + values[middle]) / 2;
+  }
+
+  function medianDeviation(values) {
+    const center = median(values);
+    for (let i = 0; i < values.length; i++) values[i] = Math.abs(values[i] - center);
+    return median(values);
+  }
+
+  function medianColumn(records, index, skip = 0) {
+    const values = records.slice(skip).map(record => record[index]);
+    return values.some(Number.isNaN) ? NaN : median(values);
+  }
+
+  function addEnergy(energy, a, b) {
+    energy[0] += a * b;
+    energy[1] += a * a;
+    energy[2] += b * b;
+  }
+
+  function fromEnergy([cross, first, second]) {
+    const product = first * second;
+    return product > 0 ? Math.max(-1, Math.min(1, cross / Math.sqrt(product))) : NaN;
+  }
+
+  function correlation(a, b) {
+    const aMean = mean(a), bMean = mean(b), energy = [0, 0, 0];
+    for (let i = 0; i < a.length; i++) addEnergy(energy, a[i] - aMean, b[i] - bMean);
+    return fromEnergy(energy);
+  }
+
+  const clamp = (value, last) => Math.max(0, Math.min(value, last));
+
+  function profileHP(values, size) {
+    const last = values.length - 1, radius = size >> 1;
+    const out = new Float64Array(values.length);
+    let sum = 0;
+    for (let k = -radius; k <= radius; k++) sum += values[clamp(k, last)];
+    for (let i = 0; i <= last; i++) {
+      out[i] = values[i] - sum / size;
+      sum += values[clamp(i + radius + 1, last)] - values[clamp(i - radius, last)];
+    }
+    const center = mean(out);
+    for (let i = 0; i < out.length; i++) out[i] -= center;
+    return out;
+  }
+
+  // 在全幅坐标做两次复制边界的一维均值，最后只保留 ROI。
+  function boxMean(image, width, height, region, size, scratch) {
+    const {x, y, w, h} = region, radius = size >> 1;
+    const out = new Float64Array(w * h);
+    for (let row = 0; row < height; row++) {
+      const source = row * width, target = row * w;
+      let sum = 0;
+      for (let dx = -radius; dx <= radius; dx++) sum += image[source + clamp(x + dx, width - 1)];
+      for (let col = 0; col < w; col++) {
+        scratch[target + col] = sum / size;
+        sum += image[source + clamp(x + col + radius + 1, width - 1)] -
+          image[source + clamp(x + col - radius, width - 1)];
+      }
+    }
+    for (let col = 0; col < w; col++) {
+      let sum = 0;
+      for (let dy = -radius; dy <= radius; dy++) sum += scratch[clamp(y + dy, height - 1) * w + col];
+      for (let row = 0; row < h; row++) {
+        out[row * w + col] = sum / size;
+        sum += scratch[clamp(y + row + radius + 1, height - 1) * w + col] -
+          scratch[clamp(y + row - radius, height - 1) * w + col];
+      }
+    }
+    return out;
+  }
+
+  function spectrum(values) {
+    const n = values.length, center = mean(values), weighted = new Float64Array(n);
+    let windowEnergy = 0;
+    for (let i = 0; i < n; i++) {
+      const win = n > 2 ? .5 - .5 * Math.cos(2 * Math.PI * i / (n - 1)) : 1;
+      weighted[i] = (values[i] - center) * win;
+      windowEnergy += win * win;
+    }
+    // 计算任意长度轮廓的正频率点，避免补零改变 Matlab 的频率坐标。
+    const records = [];
+    for (let k = 1; k <= Math.floor(n / 2); k++) {
+      const angle = 2 * Math.PI * k / n, cos = Math.cos(angle), sin = Math.sin(angle);
+      let real = 0, imag = 0, u = 1, v = 0;
+      for (let i = 0; i < n; i++) {
+        real += weighted[i] * u;
+        imag += weighted[i] * v;
+        const nextU = u * cos - v * sin;
+        v = v * cos + u * sin;
+        u = nextU;
+      }
+      records.push([k / n, (real * real + imag * imag) / windowEnergy]);
+    }
+    return records;
+  }
+
+  function phases(values, origin) {
+    return [2, 4, 8, 16].map(period => {
+      if (values.length < period) return [period, NaN, NaN];
+      const levels = new Float64Array(period), counts = new Uint32Array(period);
+      let total = 0;
+      for (let i = 0; i < values.length; i++) {
+        const phase = (origin + i) % period;
+        levels[phase] += values[i];
+        counts[phase]++;
+        total += values[i] * values[i];
+      }
+      let energy = 0;
+      for (let p = 0; p < period; p++) {
+        levels[p] /= counts[p];
+        energy += counts[p] * levels[p] * levels[p];
+      }
+      return [period, Math.max(...levels) - Math.min(...levels), total > 0 ? 100 * energy / total : NaN];
+    });
+  }
+
+  function laplaceProxy(image, support, width, height, region, scratch) {
+    const rows = Math.floor(region.h / 32), columns = Math.floor(region.w / 32);
+    if (!rows || !columns) return NaN;
+    const levels = [];
+    for (let by = 0; by < rows; by++) {
+      for (let bx = 0; bx < columns; bx++) {
+        let count = 0;
+        for (let j = 0; j < 32; j++) {
+          const y = region.y + by * 32 + j;
+          const base = y * width, above = Math.max(0, y - 1) * width, below = Math.min(height - 1, y + 1) * width;
+          for (let i = 0; i < 32; i++) {
+            const x = region.x + bx * 32 + i, index = base + x;
+            if (support.invalidLaplace[index]) continue;
+            scratch[count++] = Math.abs(4 * image[index] - image[above + x] - image[below + x] -
+              image[base + Math.max(0, x - 1)] - image[base + Math.min(width - 1, x + 1)]);
+          }
+        }
+        if (count >= 768) levels.push(median(scratch, count));
+      }
+    }
+    if (!levels.length) return NaN;
+    levels.sort((a, b) => a - b);
+    return levels[Math.ceil(levels.length / 4) - 1] / (NORMAL_MAD * Math.sqrt(20));
+  }
+
+  function splitCorrelations(early, late, options, region, filter) {
+    const [dx, dy] = options.shiftXY.length ? options.shiftXY : [0, 0];
+    const overlap = {x: Math.max(0, -dx), y: Math.max(0, -dy),
+      w: region.w - Math.abs(dx), h: region.h - Math.abs(dy)};
+    const shifted = {...overlap, x: overlap.x + dx, y: overlap.y + dy};
+    function bands(image) {
+      const roi = crop(image, options.width, region);
+      const lo3 = filter(image, 3), lo9 = filter(image, 9), lo25 = filter(image, 25), lo65 = filter(image, 65);
+      difference(lo25, lo65, lo65);
+      difference(lo9, lo25, lo25);
+      difference(roi, lo9, lo9);
+      difference(roi, lo3, lo3);
+      return [lo3, lo9, lo25, lo65];
+    }
+    const a = bands(early), b = bands(late);
+    const first = componentBuffers(overlap.w, overlap.h), second = componentBuffers(overlap.w, overlap.h);
+    const overlapData = new Float64Array(overlap.w * overlap.h);
+    function residual(values, bounds, output) {
+      return components(crop(values, region.w, bounds, overlapData), overlap.w, overlap.h, output).residual;
+    }
+    const values = a.map((band, index) => {
+      const fa = residual(band, overlap, first);
+      const detector = correlation(fa, residual(b[index], overlap, second));
+      const scene = options.shiftXY.length ? correlation(fa, residual(b[index], shifted, second)) : NaN;
+      return [detector, scene];
+    });
+    return {names: BANDS, values, shift: options.shiftXY, overlap_pixels: overlap.w * overlap.h};
+  }
+
+  async function analyze(info, options, support, progress) {
+    const {width, height} = options, region = regionOf(options.roi), {w, h} = region;
+    const n = info.end - info.start + 1, firstCount = Math.floor(n / 2), pixels = w * h;
+    const fullFrame = new Float64Array(width * height);
+    const early = new Float64Array(fullFrame.length), late = new Float64Array(fullFrame.length);
+    for (let t = 0; t < n; t++) {
+      await readFrame(info, info.start + t, options, support, fullFrame);
+      const target = t < firstCount ? early : late;
+      for (let i = 0; i < target.length; i++) target[i] += fullFrame[i];
+      progress(info.label, 1, t + 1, n);
+    }
+    const meanImage = new Float64Array(fullFrame.length);
+    for (let i = 0; i < meanImage.length; i++) {
+      meanImage[i] = (early[i] + late[i]) / n;
+      early[i] /= firstCount;
+      late[i] /= n - firstCount;
+    }
+    const meanROI = crop(meanImage, width, region);
+    const std = new Float64Array(pixels), residualStd = new Float64Array(pixels);
+    const roiFrame = new Float64Array(pixels), variation = new Float64Array(pixels);
+    const previous = new Float64Array(pixels), previousCentered = new Float64Array(pixels);
+    const work = componentBuffers(w, h);
+    const delta = new Float64Array(pixels), mixed = new Float64Array((w - 1) * (h - 1));
+    const laplaceScratch = new Float64Array(1024);
+    const horizontal = [0, 0, 0], vertical = [0, 0, 0], lag = [0, 0, 0];
+    const records = [];
+    let frameMin = Infinity, frameMax = -Infinity;
+    let commonEnergy = 0, rowEnergy = 0, columnEnergy = 0, pairEnergy = 0;
+    for (let t = 0; t < n; t++) {
+      const number = info.start + t;
+      await readFrame(info, number, options, support, fullFrame);
+      crop(fullFrame, width, region, roiFrame);
+      difference(roiFrame, meanROI, variation);
+      const {centered, row, column, residual, common} = components(variation, w, h, work);
+      for (let y = 0; y < h; y++) {
+        for (let x = 0; x < w; x++) {
+          const i = y * w + x, value = residual[i];
+          std[i] += variation[i] * variation[i];
+          residualStd[i] += value * value;
+          if (x + 1 < w) addEnergy(horizontal, value, residual[i + 1]);
+          if (y + 1 < h) addEnergy(vertical, value, residual[i + w]);
+          if (t) addEnergy(lag, centered[i], previousCentered[i]);
+        }
+      }
+      const frameMean = mean(roiFrame), rowRMS = rms(row), columnRMS = rms(column);
+      frameMin = Math.min(frameMin, frameMean);
+      frameMax = Math.max(frameMax, frameMean);
+      commonEnergy += common * common;
+      rowEnergy += rowRMS * rowRMS;
+      columnEnergy += columnRMS * columnRMS;
+      let pairRMS = NaN, pairMAD = NaN, mixedMAD = NaN;
+      if (t) {
+        difference(roiFrame, previous, delta);
+        pairRMS = rms(delta, mean(delta)) / Math.SQRT2;
+        pairEnergy += pairRMS * pairRMS;
+        for (let y = 0; y < h - 1; y++) {
+          for (let x = 0; x < w - 1; x++) {
+            const i = y * w + x;
+            mixed[y * (w - 1) + x] = (delta[i + w + 1] - delta[i + 1]) - (delta[i + w] - delta[i]);
+          }
+        }
+        pairMAD = medianDeviation(delta) / (NORMAL_MAD * Math.SQRT2);
+        mixedMAD = medianDeviation(mixed) / (NORMAL_MAD * Math.sqrt(8));
+      }
+      const laplace = laplaceProxy(fullFrame, support, width, height, region, laplaceScratch);
+      records.push([number, (number - 1) / options.fps, frameMean, common, rowRMS, columnRMS, pairRMS, pairMAD, mixedMAD, laplace]);
+      previous.set(roiFrame);
+      previousCentered.set(centered);
+      progress(info.label, 2, t + 1, n);
+    }
+    progress(info.label, 3, 0, 1);
+    let zeroStd = 0;
+    for (let i = 0; i < pixels; i++) {
+      std[i] = Math.sqrt(std[i] / (n - 1));
+      residualStd[i] = Math.sqrt(residualStd[i] / (n - 1));
+      if (std[i] === 0) zeroStd++;
+    }
+    const s = {
+      frame_count: n, mean: mean(meanROI), frame_mean_ptp: frameMax - frameMin,
+      temporal_total_rms: rms(std), temporal_common_rms: Math.sqrt(commonEnergy / (n - 1)),
+      temporal_row_rms: Math.sqrt(rowEnergy / (n - 1)), temporal_column_rms: Math.sqrt(columnEnergy / (n - 1)),
+      temporal_residual_rms: rms(residualStd)
+    };
+    s.temporal_no_common_rms = Math.hypot(s.temporal_row_rms, s.temporal_column_rms, s.temporal_residual_rms);
+    s.temporal_closure = Math.abs(s.temporal_total_rms ** 2 - s.temporal_common_rms ** 2 - s.temporal_no_common_rms ** 2);
+    s.pair_rms_equiv = Math.sqrt(pairEnergy / (n - 1));
+    s.pair_mad_equiv = medianColumn(records, 7, 1);
+    s.pair_mixed_mad_equiv = medianColumn(records, 8, 1);
+    s.laplace32_proxy = medianColumn(records, 9);
+    s.temporal_lag1 = fromEnergy(lag);
+    s.residual_vertical_lag1 = fromEnergy(vertical);
+    s.residual_horizontal_lag1 = fromEnergy(horizontal);
+    s.zero_temporal_std_pct = 100 * zeroStd / pixels;
+
+    const {centered, row, column, residual} = components(meanROI, w, h);
+    const row65 = profileHP(row, 65), col65 = profileHP(column, 65);
+    const row65_9 = profileHP(row65, 9), col65_9 = profileHP(col65, 9);
+    s.spatial_total_rms = rms(centered);
+    s.spatial_row_rms = rms(row);
+    s.spatial_column_rms = rms(column);
+    s.spatial_residual_rms = rms(residual);
+    s.spatial_closure = Math.abs(s.spatial_total_rms ** 2 - s.spatial_row_rms ** 2 -
+      s.spatial_column_rms ** 2 - s.spatial_residual_rms ** 2);
+    s.row_hf65_rms = rms(row65);
+    s.column_hf65_rms = rms(col65);
+    s.row_hf65_then9_rms = rms(row65_9);
+    s.column_hf65_then9_rms = rms(col65_9);
+    const edge = Math.min(64, Math.floor(h / 2)) * w;
+    s.top_minus_bottom = mean(meanROI.subarray(0, edge)) - mean(meanROI.subarray(pixels - edge));
+    const filterScratch = new Float64Array(w * height);
+    const filter = (image, size) => boxMean(image, width, height, region, size, filterScratch);
+    const low3 = filter(meanImage, 3), low9 = filter(meanImage, 9);
+    const low25 = filter(meanImage, 25), low65 = filter(meanImage, 65);
+    const hp9 = components(difference(meanROI, low9, variation), w, h);
+    const background = low65.slice(), backgroundMean = mean(low65);
+    for (let i = 0; i < pixels; i++) background[i] -= backgroundMean;
+    s.low65_rms = rms(background);
+    difference(meanROI, low3, variation);
+    s.hp3_total_rms = rms(variation, mean(variation));
+    s.hp9_total_rms = rms(hp9.centered);
+    s.hp9_row_rms = rms(hp9.row);
+    s.hp9_column_rms = rms(hp9.column);
+    s.hp9_2d_rms = rms(hp9.residual);
+    s.hp9_closure = Math.abs(s.hp9_total_rms ** 2 - s.hp9_row_rms ** 2 - s.hp9_column_rms ** 2 - s.hp9_2d_rms ** 2);
+    difference(low9, low25, variation);
+    s.band9_25_rms = rms(variation, mean(variation));
+    difference(low25, low65, variation);
+    s.band25_65_rms = rms(variation, mean(variation));
+    const earlyParts = components(crop(early, width, region, roiFrame), w, h, work);
+    const earlyRow = profileHP(earlyParts.row, 65), earlyColumn = profileHP(earlyParts.column, 65);
+    const lateParts = components(crop(late, width, region, roiFrame), w, h, work);
+    s.split_row_hf65_corr = correlation(earlyRow, profileHP(lateParts.row, 65));
+    s.split_column_hf65_corr = correlation(earlyColumn, profileHP(lateParts.column, 65));
+    const split = splitCorrelations(early, late, options, region, filter);
+    s.split_hp9_2d_corr = split.values[1][0];
+    progress(info.label, 3, 1, 1);
+    return {
+      info: {label: info.label, source: info.sourceName, frame_count: info.total, frames: [info.start, info.end],
+        separate_files: info.separate, frame_bytes: info.frameBytes, paths: info.files.map(f => f.webkitRelativePath || f.name)},
+      stats: s, frames: records,
+      profiles: {
+        row: Array.from(row, (value, i) => [region.y + i + 1, value, row65[i], row65_9[i], hp9.row[i]]),
+        column: Array.from(column, (value, i) => [region.x + i + 1, value, col65[i], col65_9[i], hp9.column[i]])
+      },
+      spectra: {row: spectrum(row65), column: spectrum(col65)},
+      phases: {row: phases(row65, region.y), column: phases(col65, region.x)},
+      split,
+      maps: {mean: meanROI, mean_centered: centered, low65: background, hp9: hp9.centered,
+        hp9_2d: hp9.residual, temporal_std: std, temporal_residual_std: residualStd}
+    };
+  }
+
+  async function run(sources, input, onProgress = () => {}) {
+    const options = validateOptions(input, sources.length === 2);
+    const plans = sources.map((source, i) => describe(source, options, 'AB'[i]));
+    if (plans.length === 2 && (plans[0].start !== plans[1].start || plans[0].end !== plans[1].end)) {
+      throw new Error('A、B 组输入帧数不同。请指定两组共有的起止帧。');
+    }
+    const support = makeBadSupport(options);
+    const results = [];
+    for (const plan of plans) results.push(await analyze(plan, options, support, onProgress));
+    let comparison = null;
+    if (results.length === 2) {
+      const [a, b] = results;
+      const map = difference(b.maps.mean_centered, a.maps.mean_centered);
+      comparison = {global_delta: b.stats.mean - a.stats.mean, centered_difference: map, centered_difference_rms: rms(map)};
+      if (options.temperatureC.length) {
+        const dt = options.temperatureC[1] - options.temperatureC[0];
+        comparison.delta_temperature_c = dt;
+        comparison.slope_map_per_c = map.map(value => value / dt);
+        comparison.slope_rms_per_c = comparison.centered_difference_rms / Math.abs(dt);
+      }
+    }
+    return {options, results, comparison, unit: options.format === 'Y8' ? 'gray' : 'DN'};
+  }
+  return {validateOptions, describe, run};
+})();
+  </script>
+  <script id="workerCode" type="text/plain">
+self.onmessage = async ({data}) => {
+  try {
+    let lastMessage = -Infinity;
+    const packet = await NoiseCore.run(data.sources, data.options, (label, pass, frame, total) => {
+      const now = performance.now();
+      if (now - lastMessage < 65 && frame !== total) return;
+      lastMessage = now;
+      self.postMessage({type: 'progress', label, pass, frame, total});
+    });
+    const maps = packet.results.flatMap(result => Object.values(result.maps));
+    if (packet.comparison) {
+      maps.push(packet.comparison.centered_difference);
+      if (packet.comparison.slope_map_per_c) maps.push(packet.comparison.slope_map_per_c);
+    }
+    self.postMessage({type: 'result', packet}, maps.map(map => map.buffer));
+  } catch (error) {
+    self.postMessage({type: 'error', message: error.message || String(error)});
+  }
+};
+  </script>
+  <script id="reportCode">
+const METRIC_LABELS = {
+  frame_count: '分析帧数', mean: '整体均值', frame_mean_ptp: '逐帧均值峰峰值',
+  temporal_total_rms: '时域总 RMS', temporal_common_rms: '时域共模 RMS',
+  temporal_row_rms: '动态行分量 RMS', temporal_column_rms: '动态列分量 RMS',
+  temporal_residual_rms: '时域二维残余 RMS', temporal_no_common_rms: '去共模时域 RMS',
+  temporal_closure: '时域分解平方和误差',
+  pair_rms_equiv: '相邻帧差等效 RMS', pair_mad_equiv: '相邻帧差 MAD 估计',
+  pair_mixed_mad_equiv: '混合差分 MAD 估计', laplace32_proxy: '32×32 拉普拉斯估计',
+  temporal_lag1: '时间相邻帧相关', residual_vertical_lag1: '残余纵向相邻像素相关',
+  residual_horizontal_lag1: '残余横向相邻像素相关', zero_temporal_std_pct: '时域方差为零比例',
+  spatial_total_rms: '均值图空间总 RMS', spatial_row_rms: '均值图行分量 RMS',
+  spatial_column_rms: '均值图列分量 RMS', spatial_residual_rms: '均值图二维残余 RMS',
+  spatial_closure: '空间分解平方和误差',
+  row_hf65_rms: '横纹 HF65 RMS', column_hf65_rms: '竖纹 HF65 RMS',
+  row_hf65_then9_rms: '横纹 HF65 再高通 9 点', column_hf65_then9_rms: '竖纹 HF65 再高通 9 点',
+  top_minus_bottom: '上、下边缘平均差', low65_rms: '65×65 背景 RMS',
+  hp3_total_rms: 'HP3 总 RMS', hp9_total_rms: 'HP9 总 RMS',
+  hp9_row_rms: 'HP9 行分量 RMS', hp9_column_rms: 'HP9 列分量 RMS',
+  hp9_2d_rms: 'HP9 二维残余 RMS', hp9_closure: 'HP9 分解平方和误差',
+  band9_25_rms: '9–25 像素尺度 RMS', band25_65_rms: '25–65 像素尺度 RMS',
+  split_row_hf65_corr: '横纹前后半段相关', split_column_hf65_corr: '竖纹前后半段相关',
+  split_hp9_2d_corr: 'HP9 二维前后半段相关'
+};
+const MAPS = [
+  {key: 'mean_centered', title: '去均值图'},
+  {key: 'low65', title: '65×65 低频背景'},
+  {key: 'hp9_2d', title: 'HP9 二维残余'},
+  {key: 'temporal_std', title: '时域标准差', positive: true}
+];
+const CURVES = [
+  {title: '横纹 · 行 HF65', xLabel: '原图行号', source: r => r.profiles.row, x: 0, y: 2},
+  {title: '竖纹 · 列 HF65', xLabel: '原图列号', source: r => r.profiles.column, x: 0, y: 2},
+  {title: '全帧共模波动', xLabel: '时间（秒）', source: r => r.frames, x: 1, y: 3},
+  {title: '相邻帧差 MAD 估计', xLabel: '时间（秒）', source: r => r.frames, x: 1, y: 7}
+];
+const SPECTRA = [
+  {title: '行 HF65 频谱', xLabel: '频率（cycles/pixel）', source: r => r.spectra.row, x: 0, y: 1, power: true},
+  {title: '列 HF65 频谱', xLabel: '频率（cycles/pixel）', source: r => r.spectra.column, x: 0, y: 1, power: true}
+];
+const fmt = (value, digits = 4) => {
+  if (!Number.isFinite(value)) return '—';
+  if (value === 0) return '0';
+  return Math.abs(value) >= 10 ** -digits ? value.toFixed(digits) : value.toExponential(2);
+};
+const countText = value => value.toLocaleString('zh-CN');
+const metricUnit = (key, unit) => {
+  if (key === 'frame_count') return 'frames';
+  if (key.endsWith('_closure')) return unit + '^2';
+  if (/_corr$|_lag1$/.test(key)) return 'ratio';
+  if (key.endsWith('_pct')) return 'percent';
+  return unit;
+};
+const relativeChange = (key, a, b) => /(_rms|_equiv|_proxy)$/.test(key) && a > 0 ? 100 * (b - a) / a : NaN;
+
+const Report = (() => {
+  const encoder = new TextEncoder();
+  const number = value => Number.isFinite(value) ? Number(value.toPrecision(12)).toString() : 'NaN';
+  const csv = (fields, rows) => fields.join(',') + '\r\n' +
+    rows.map(row => row.map(value => typeof value === 'number' ? number(value) : value).join(',')).join('\r\n') + '\r\n';
+
+  function summary(packet) {
+    const [a, b] = packet.results, rows = [];
+    const fields = ['metric', 'unit', 'A'];
+    if (b) fields.push('B', 'B_minus_A', 'relative_change_pct');
+    for (const key of Object.keys(a.stats)) {
+      const av = a.stats[key], row = [key, metricUnit(key, packet.unit), av];
+      if (b) {
+        const bv = b.stats[key];
+        row.push(bv, bv - av, relativeChange(key, av, bv));
+      }
+      rows.push(row);
+    }
+    return csv(fields, rows);
+  }
+
+  function textReport(packet) {
+    const {options: o, results, comparison: c, unit} = packet;
+    const [x1, y1, x2, y2] = o.roi;
+    const lines = ['RTD6122 噪声分析标准模型 V1（118）', '',
+      '数据格式 ' + o.format + '，' + o.width + '×' + o.height + '，' + o.fps + ' Hz，单位 ' + unit,
+      '场景 ' + (o.scene === 'uniform' ? '固定均匀面' : '实景 / 运动画面') +
+        '，ROI [' + o.roi.join(' ') + ']（1 起算，含边界）',
+      '已知坏点 ' + o.badXY.length + ' 个，四邻域填补。' + (o.badXY.length ? ' ' + o.badXY.map(p => '(' + p.join(',') + ')').join(' ') : ''),
+      o.scene === 'uniform' ? '均匀面用于测量时间波动和空间不均匀。' : '实景指标也受真实结构和运动影响。'];
+    for (const {info, stats: s, split} of results) {
+      lines.push('', info.label + ' 组 ' + info.source, '输入 ' + info.frame_count + ' 帧，分析 ' +
+        info.frames.join('～') + ' 帧，共 ' + s.frame_count + ' 帧',
+      '整体均值 ' + fmt(s.mean) + '，逐帧均值峰峰值 ' + fmt(s.frame_mean_ptp) + ' ' + unit,
+      '时域总 / 去共模 RMS ' + fmt(s.temporal_total_rms) + ' / ' + fmt(s.temporal_no_common_rms) + ' ' + unit,
+      '时域共模 / 行 / 列 / 残余 RMS ' + ['common', 'row', 'column', 'residual'].map(k => fmt(s['temporal_' + k + '_rms'])).join(' / ') + ' ' + unit,
+      '均值图空间 RMS ' + fmt(s.spatial_total_rms) + '，65×65 背景 RMS ' + fmt(s.low65_rms) + ' ' + unit,
+      '行 / 列 HF65 RMS ' + fmt(s.row_hf65_rms) + ' / ' + fmt(s.column_hf65_rms) + ' ' + unit,
+      'HP9 ROI 总 / 行 / 列 / 二维 RMS ' + ['total', 'row', 'column', '2d'].map(k => fmt(s['hp9_' + k + '_rms'])).join(' / ') + ' ' + unit,
+      '帧差 RMS / 帧差 MAD / 混合差分 MAD ' + ['pair_rms_equiv', 'pair_mad_equiv', 'pair_mixed_mad_equiv'].map(k => fmt(s[k])).join(' / ') + ' ' + unit,
+      '32×32 拉普拉斯估计 ' + fmt(s.laplace32_proxy) + ' ' + unit + '，HP9 前后半段相关 ' + fmt(s.split_hp9_2d_corr));
+      if (o.shiftXY.length) lines.push('平移 [' + o.shiftXY.join(' ') + ']，重叠 ' + split.overlap_pixels +
+        ' 像素，HP9 场景坐标相关 ' + fmt(split.values[1][1]));
+    }
+    if (c) {
+      lines.push('', 'B−A 全局均值差 ' + fmt(c.global_delta) + ' ' + unit +
+        '，去均值图差值 RMS ' + fmt(c.centered_difference_rms) + ' ' + unit);
+      if (o.temperatureC.length) lines.push('A / B 焦温 ' + o.temperatureC.join(' / ') + ' ℃，温差 ' +
+        fmt(c.delta_temperature_c) + ' ℃，差值归一化 RMS ' + fmt(c.slope_rms_per_c) + ' ' + unit + '/℃');
+    }
+    lines.push('', 'summary.csv 保留指标、单位及 B−A。NaN 表示未定义或未计算。',
+      'analysis.json 保存输入顺序、设置和二进制矩阵索引。矩阵以 Float64 小端、逐行顺序保存。',
+      'MATLAB 读取 A 组均值矩阵示例',
+      "fid = fopen('matrices/A_mean.f64le','rb','ieee-le');",
+      "M = fread(fid,[" + (x2 - x1 + 1) + " " + (y2 - y1 + 1) + "],'*double').'; fclose(fid);",
+      '本报告的数值为码值或显示灰度。计算 NETD 需要另做温度响应标定。', '');
+    return lines.join('\r\n');
+  }
+
+  function matrixBlob(values) {
+    if (new Uint8Array(new Uint16Array([1]).buffer)[0] === 1) return new Blob([values]);
+    const buffer = new ArrayBuffer(values.length * 8), view = new DataView(buffer);
+    for (let i = 0; i < values.length; i++) view.setFloat64(i * 8, values[i], true);
+    return new Blob([buffer]);
+  }
+
+  function entries(packet) {
+    const {options, results, comparison, unit} = packet;
+    const files = [{name: 'report.txt', data: '\ufeff' + textReport(packet)},
+      {name: 'summary.csv', data: summary(packet)}];
+    const add = (name, data) => files.push({name, data});
+    const axes = ['row', 'column'];
+    const [x1, y1, x2, y2] = options.roi;
+    const manifest = {model: 'Noise_Standard_118', implementation: 'HTML', options, unit, missing_numeric_value: 'null represents NaN',
+      matrices: {width: x2 - x1 + 1, height: y2 - y1 + 1, encoding: 'float64-le', layout: 'row-major', directory: 'matrices/'},
+      groups: [], comparison: null};
+    for (const result of results) {
+      const label = result.info.label;
+      add('frames_' + label + '.csv', csv(['frame', 'time_s', 'mean', 'common', 'row_fluctuation_rms',
+        'column_fluctuation_rms', 'pair_rms_equiv', 'pair_mad_equiv', 'pair_mixed_mad_equiv', 'laplace32_proxy'], result.frames));
+      for (const axis of axes) {
+        add(axis + '_profile_' + label + '.csv', csv(['coordinate_1based', 'mean_offset', 'hf65', 'hf65_then9', 'hp9_component'], result.profiles[axis]));
+        add(axis + '_spectrum_' + label + '.csv', csv(['cycles_per_pixel', 'power'], result.spectra[axis]));
+        add(axis + '_phase_' + label + '.csv', csv(['period_pixels', 'level_ptp', 'projected_energy_pct'], result.phases[axis]));
+      }
+      add('split_corr_' + label + '.csv', csv(['band', 'detector_coordinates', 'scene_shift_coordinates'],
+        result.split.names.map((name, i) => [name, ...result.split.values[i]])));
+      const paths = {};
+      for (const [key, map] of Object.entries(result.maps)) {
+        paths[key] = 'matrices/' + label + '_' + key + '.f64le';
+        add(paths[key], matrixBlob(map));
+      }
+      manifest.groups.push({info: result.info, stats: result.stats, split: result.split, maps: paths});
+    }
+    if (comparison) {
+      const {centered_difference, slope_map_per_c, ...stats} = comparison;
+      manifest.comparison = {...stats, centered_difference: 'matrices/B_minus_A_centered.f64le'};
+      add(manifest.comparison.centered_difference, matrixBlob(centered_difference));
+      if (slope_map_per_c) {
+        manifest.comparison.slope_map_per_c = 'matrices/B_minus_A_per_c.f64le';
+        add(manifest.comparison.slope_map_per_c, matrixBlob(slope_map_per_c));
+      }
+    }
+    add('analysis.json', JSON.stringify(manifest, null, 2));
+    return files;
+  }
+
+  const crcTable = Uint32Array.from({length: 256}, (_, i) => {
+    let crc = i;
+    for (let bit = 0; bit < 8; bit++) crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+    return crc >>> 0;
+  });
+  async function crc32(blob) {
+    let crc = 0xffffffff;
+    const reader = blob.stream().getReader();
+    try {
+      for (;;) {
+        const {done, value} = await reader.read();
+        if (done) return (crc ^ 0xffffffff) >>> 0;
+        for (let i = 0; i < value.length; i++) crc = (crc >>> 8) ^ crcTable[(crc ^ value[i]) & 255];
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  // 使用 ZIP store 保存 Blob，避免把整包二进制转成字符串或一次读回内存。
+  async function zip(files, progress) {
+    const local = [], central = [];
+    let offset = 0, centralSize = 0;
+    const now = new Date();
+    const date = (Math.max(1980, now.getFullYear()) - 1980) * 512 + (now.getMonth() + 1) * 32 + now.getDate();
+    const time = now.getHours() * 2048 + now.getMinutes() * 32 + Math.floor(now.getSeconds() / 2);
+    for (const [i, file] of files.entries()) {
+      const name = encoder.encode(file.name), blob = file.data instanceof Blob ? file.data : new Blob([file.data]);
+      if (offset + blob.size + 76 + 2 * name.length >= 0xffffffff) {
+        throw new Error('结果包超过 ZIP 大小限制。可缩小 ROI 后导出，或单独下载汇总 CSV。');
+      }
+      const crc = await crc32(blob);
+      const header = new Uint8Array(30 + name.length), h = new DataView(header.buffer);
+      h.setUint32(0, 0x04034b50, true);
+      h.setUint16(4, 20, true);
+      h.setUint16(6, 0x0800, true);
+      h.setUint16(10, time, true);
+      h.setUint16(12, date, true);
+      h.setUint32(14, crc, true);
+      h.setUint32(18, blob.size, true);
+      h.setUint32(22, blob.size, true);
+      h.setUint16(26, name.length, true);
+      header.set(name, 30);
+      const record = new Uint8Array(46 + name.length), c = new DataView(record.buffer);
+      c.setUint32(0, 0x02014b50, true);
+      c.setUint16(4, 20, true);
+      record.set(header.subarray(4, 28), 6);
+      c.setUint32(42, offset, true);
+      record.set(name, 46);
+      local.push(header, blob);
+      central.push(record);
+      offset += header.length + blob.size;
+      centralSize += record.length;
+      progress(i + 1, files.length);
+    }
+    const end = new Uint8Array(22), e = new DataView(end.buffer);
+    e.setUint32(0, 0x06054b50, true);
+    e.setUint16(8, files.length, true);
+    e.setUint16(10, files.length, true);
+    e.setUint32(12, centralSize, true);
+    e.setUint32(16, offset, true);
+    return new Blob([...local, ...central, end], {type: 'application/zip'});
+  }
+  return {summary, entries, zip};
+})();
+  </script>
+  <script id="graphicsCode">
+const Graphics = (() => {
+  const plotColors = ['#196c9b', '#ad5818'];
+  const palettes = {
+    positive: [[20, 40, 61], [23, 91, 140], [111, 192, 196], [255, 240, 176]],
+    signed: [[20, 82, 139], [246, 245, 239], [179, 74, 37]]
+  };
+  function palette(positive) {
+    const stops = positive ? palettes.positive : palettes.signed;
+    const colors = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) {
+      const scale = i / 255 * (stops.length - 1);
+      const left = Math.min(stops.length - 2, Math.floor(scale));
+      for (let k = 0; k < 3; k++) {
+        colors[i * 3 + k] = stops[left][k] + (stops[left + 1][k] - stops[left][k]) * (scale - left);
+      }
+    }
+    return colors;
+  }
+  const signedColors = palette(false), positiveColors = palette(true);
+  function boundFor(results, key) {
+    let bound = 0;
+    for (const result of results) {
+      for (const value of result.maps[key]) bound = Math.max(bound, Math.abs(value));
+    }
+    return bound < 1e-10 ? 1 : bound;
+  }
+  function heatmap(canvas, values, w, h, bound, positive) {
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', {alpha: false}), img = ctx.createImageData(w, h);
+    const colors = positive ? positiveColors : signedColors;
+    for (let i = 0; i < values.length; i++) {
+      const fraction = positive ? values[i] / bound : .5 + values[i] / (2 * bound);
+      const color = 3 * Math.round(Math.max(0, Math.min(1, fraction)) * 255);
+      img.data[i * 4] = colors[color];
+      img.data[i * 4 + 1] = colors[color + 1];
+      img.data[i * 4 + 2] = colors[color + 2];
+      img.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  const short = n => {
+    if (n === 0) return '0';
+    if (Math.abs(n) < .001 || Math.abs(n) >= 1e5) return n.toExponential(1);
+    return Number(n.toPrecision(4)).toString();
+  };
+  function plot(canvas, packet, spec, width, height = 196, ratio = 1) {
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+    const ctx = canvas.getContext('2d', {alpha: false});
+    ctx.scale(ratio, ratio);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, width, height);
+    const data = packet.results.map(spec.source);
+    let xMin = Infinity, xMax = -Infinity, yMin = Infinity, yMax = -Infinity;
+    for (const series of data) {
+      for (const point of series) {
+        if (!Number.isFinite(point[spec.y])) continue;
+        xMin = Math.min(xMin, point[spec.x]);
+        xMax = Math.max(xMax, point[spec.x]);
+        yMin = Math.min(yMin, point[spec.y]);
+        yMax = Math.max(yMax, point[spec.y]);
+      }
+    }
+    ctx.font = '13px "Segoe UI", "Microsoft YaHei", sans-serif';
+    ctx.fillStyle = '#506477';
+    if (yMin === Infinity) {
+      ctx.textAlign = 'center';
+      ctx.fillText('该帧段无可用数据', width / 2, height / 2);
+      return;
+    }
+    if (spec.power) yMin = 0;
+    if (yMin === yMax) {
+      const pad = Math.max(1e-6, Math.abs(yMin) * .1, yMin === 0 ? 1 : 0);
+      if (!spec.power) yMin -= pad;
+      yMax += pad;
+    }
+    if (xMin === xMax) {
+      xMin -= .5;
+      xMax += .5;
+    }
+    const left = 56, right = width - 21, top = 25, bottom = height - 39;
+    const plotX = x => left + (x - xMin) * (right - left) / (xMax - xMin);
+    const plotY = y => bottom - (y - yMin) * (bottom - top) / (yMax - yMin);
+    ctx.textAlign = 'left';
+    ctx.fillText(packet.unit + (spec.power ? '²' : ''), 3, 14);
+    ctx.textAlign = 'right';
+    ctx.strokeStyle = '#dce6ed';
+    for (let i = 0; i < 5; i++) {
+      const y = bottom - (bottom - top) * i / 4;
+      ctx.beginPath();
+      ctx.moveTo(left, y);
+      ctx.lineTo(right, y);
+      ctx.stroke();
+      ctx.fillText(short(yMin + (yMax - yMin) * i / 4), left - 6, y + 4);
+    }
+    ctx.textAlign = 'center';
+    const ticks = width < 400 ? 3 : 4;
+    for (let i = 0; i <= ticks; i++) {
+      ctx.fillText(short(xMin + (xMax - xMin) * i / ticks), left + (right - left) * i / ticks, bottom + 16);
+    }
+    ctx.fillText(spec.xLabel, (left + right) / 2, height - 4);
+    data.forEach((series, i) => {
+      ctx.strokeStyle = plotColors[i];
+      ctx.fillStyle = plotColors[i];
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let connected = false, count = 0, lastX, lastY;
+      for (const point of series) {
+        if (!Number.isFinite(point[spec.y])) {
+          connected = false;
+          continue;
+        }
+        lastX = plotX(point[spec.x]);
+        lastY = plotY(point[spec.y]);
+        if (connected) ctx.lineTo(lastX, lastY);
+        else ctx.moveTo(lastX, lastY);
+        connected = true;
+        count++;
+      }
+      ctx.stroke();
+      if (count === 1) {
+        ctx.beginPath();
+        ctx.arc(lastX, lastY, 2.8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+  }
+  function asPNG(canvas) {
+    return new Promise((resolve, reject) => canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('生成 PNG 失败。'));
+    }, 'image/png'));
+  }
+  function legend(ctx, x, y, width, bound, positive) {
+    const colors = positive ? palettes.positive : palettes.signed;
+    const gradient = ctx.createLinearGradient(x, y, x + width, y);
+    colors.forEach((color, i) => gradient.addColorStop(i / (colors.length - 1), 'rgb(' + color.join(',') + ')'));
+    ctx.fillStyle = gradient;
+    ctx.fillRect(x, y, width, 8);
+    ctx.fillStyle = '#506477';
+    ctx.font = '13px "Segoe UI", "Microsoft YaHei", sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(positive ? '0' : short(-bound), x, y + 24);
+    ctx.textAlign = 'right';
+    ctx.fillText(short(bound), x + width, y + 24);
+    ctx.textAlign = 'left';
+  }
+  function mapsPNG(packet) {
+    const [x1, y1, x2, y2] = packet.options.roi;
+    const w = x2 - x1 + 1, h = y2 - y1 + 1;
+    const canvas = document.createElement('canvas'), scratch = document.createElement('canvas');
+    const pad = 18, cell = 318, tile = 300, drawScale = Math.min(tile / w, 240 / h);
+    const dw = Math.max(1, Math.round(w * drawScale)), dh = Math.max(1, Math.round(h * drawScale));
+    canvas.width = pad * 2 + cell * MAPS.length;
+    canvas.height = 71 + packet.results.length * (dh + 30) + 34;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#162b3f';
+    ctx.font = 'bold 21px "Segoe UI", "Microsoft YaHei", sans-serif';
+    ctx.fillText('噪声分析 · 空间图（' + packet.unit + '）', pad, 30);
+    for (const [i, spec] of MAPS.entries()) {
+      const x = pad + cell * i, bound = boundFor(packet.results, spec.key);
+      ctx.fillStyle = '#162b3f';
+      ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif';
+      ctx.fillText(spec.title, x, 59);
+      for (const [j, result] of packet.results.entries()) {
+        const y = 74 + j * (dh + 30);
+        ctx.font = '14px "Segoe UI", "Microsoft YaHei", sans-serif';
+        ctx.fillText(result.info.label + ' 组', x, y + 12);
+        heatmap(scratch, result.maps[spec.key], w, h, bound, spec.positive);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(scratch, x, y + 17, dw, dh);
+      }
+      legend(ctx, x, 76 + packet.results.length * (dh + 30), tile, bound, spec.positive);
+    }
+    return asPNG(canvas);
+  }
+  function profilesPNG(packet) {
+    const canvas = document.createElement('canvas'), scratch = document.createElement('canvas');
+    const w = 560, h = 216, gap = 17;
+    canvas.width = 2 * w + 3 * gap;
+    canvas.height = 2 * (h + 27) + 52;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#162b3f';
+    ctx.font = 'bold 21px "Segoe UI", "Microsoft YaHei", sans-serif';
+    ctx.fillText('噪声分析 · 时序与轮廓', gap, 29);
+    packet.results.forEach((r, i) => {
+      ctx.fillStyle = plotColors[i];
+      ctx.font = '14px "Segoe UI", "Microsoft YaHei", sans-serif';
+      ctx.fillText(r.info.label + ' 组', canvas.width - 140 + i * 56, 28);
+    });
+    for (const [i, spec] of CURVES.entries()) {
+      const x = gap + (i % 2) * (w + gap), y = 45 + Math.floor(i / 2) * (h + 27);
+      ctx.fillStyle = '#162b3f';
+      ctx.font = 'bold 16px "Segoe UI", "Microsoft YaHei", sans-serif';
+      ctx.fillText(spec.title, x + 5, y + 16);
+      plot(scratch, packet, spec, w, h);
+      ctx.drawImage(scratch, x, y + 20);
+    }
+    return asPNG(canvas);
+  }
+  return {boundFor, heatmap, plot, mapsPNG, profilesPNG};
+})();
+  </script>
+  <script id="appCode">
+(() => {
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const form = $('analysisForm');
+  const sources = {A: null, B: null};
+  const defaultSourceText = '可拖入多帧文件或多个单帧文件';
+  const plotUpdates = new Map();
+  const observer = new ResizeObserver(entries => {
+    for (const entry of entries) plotUpdates.get(entry.target)?.();
+  });
+  let current = null;
+  let active = null;
+  let exporting = false;
+
+  const mode = () => form.elements.mode.value;
+  const number = id => $(id).valueAsNumber;
+  const make = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+  function optionalNumbers(id, name) {
+    const source = $(id).value.trim();
+    if (!source) return [];
+    const tokens = source.split(/[\s,，;；]+/).filter(Boolean);
+    const decimal = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/;
+    if (!tokens.length || tokens.some(token => !decimal.test(token) || !Number.isFinite(Number(token)))) {
+      throw new Error(name + '请填写数字，使用空格或逗号分隔。');
+    }
+    return tokens.map(Number);
+  }
+  function basicOptions() {
+    return {width: number('width'), height: number('height'), fps: number('fps'), format: $('format').value,
+      scene: $('scene').value, frames: [], roi: [], badXY: [], shiftXY: [], temperatureC: []};
+  }
+  function optionsFromForm() {
+    const o = basicOptions();
+    if ($('frameStart').value || $('frameEnd').value || $('frameStart').validity.badInput || $('frameEnd').validity.badInput) {
+      o.frames = [number('frameStart'), number('frameEnd')];
+    }
+    o.roi = optionalNumbers('roi', 'ROI');
+    const coordinates = optionalNumbers('badXY', '坏点坐标');
+    if (coordinates.length % 2) throw new Error('坏点请填写成对的 x y，例如 530 497。');
+    for (let i = 0; i < coordinates.length; i += 2) o.badXY.push(coordinates.slice(i, i + 2));
+    o.shiftXY = optionalNumbers('shiftXY', '平移');
+    if (!$('temperatureField').hidden) o.temperatureC = optionalNumbers('temperatureC', '采集焦温');
+    return NoiseCore.validateOptions(o, mode() === 'pair');
+  }
+  function setStatus(text, isError = false) {
+    const status = $('runStatus');
+    status.textContent = text;
+    status.classList.toggle('error', isError);
+  }
+  function sourceStatus(label, text, isError = false) {
+    $('source' + label).textContent = text;
+    $('source' + label).classList.toggle('error', isError);
+  }
+  function refreshSource(label) {
+    const source = sources[label];
+    document.querySelector('[data-clear="' + label + '"]').hidden = !source;
+    if (!source) {
+      sourceStatus(label, defaultSourceText);
+      return;
+    }
+    try {
+      const info = NoiseCore.describe(source, NoiseCore.validateOptions(basicOptions(), false), label);
+      sourceStatus(label, source.name + ' · ' + countText(info.total) +
+        ' 帧 · 每帧 ' + countText(info.frameBytes) + ' 字节');
+    } catch (error) {
+      sourceStatus(label, source.name + ' · ' + error.message, true);
+    }
+  }
+  function refreshSources() {
+    refreshSource('A');
+    if (mode() === 'pair') refreshSource('B');
+  }
+  function refreshMode() {
+    const pair = mode() === 'pair';
+    $('dropB').hidden = !pair;
+    $('temperatureField').hidden = !pair || $('scene').value !== 'uniform';
+    refreshSources();
+  }
+  function setSource(label, list, directory) {
+    if (active || !list.length) return;
+    let files = Array.from(list);
+    let name;
+    if (directory) {
+      name = files[0].webkitRelativePath.split('/')[0] || '单帧目录';
+      files = files.filter(file => file.webkitRelativePath.split('/').length === 2 && /\.(raw|bin)$/i.test(file.name));
+      if (!files.length) {
+        sources[label] = null;
+        refreshSource(label);
+        sourceStatus(label, '该目录本层没有 RAW / BIN 文件。', true);
+        setStatus('请选择直接存放单帧文件的目录。', true);
+        return;
+      }
+    } else {
+      name = files.length === 1 ? files[0].name : countText(files.length) + ' 个单帧文件';
+    }
+    sources[label] = {files, directory, name};
+    refreshSource(label);
+    setStatus('已选择 ' + label + ' 组，请核对采集参数后开始分析。');
+  }
+  function updateDownloads() {
+    $('downloadSummary').disabled = !current || !!active;
+    $('downloadZip').disabled = !current || !!active || exporting;
+  }
+  function setBusy(busy) {
+    $('controls').disabled = busy;
+    $('runButton').disabled = busy;
+    $('runButton').textContent = busy ? '分析中' : '开始分析';
+    $('demoButton').disabled = busy;
+    $('cancelButton').hidden = !busy;
+    $('analysisProgress').hidden = !busy;
+    updateDownloads();
+  }
+  function stopWorker(job) {
+    job.worker.terminate();
+    URL.revokeObjectURL(job.url);
+    if (active === job) active = null;
+    setBusy(false);
+  }
+  function startAnalysis() {
+    if (active) return;
+    let url, worker;
+    try {
+      const o = optionsFromForm();
+      const labels = mode() === 'pair' ? ['A', 'B'] : ['A'];
+      const selected = labels.map(label => {
+        if (!sources[label]) throw new Error('请为 ' + label + ' 组选择数据。');
+        return sources[label];
+      });
+      const plans = selected.map((source, i) => NoiseCore.describe(source, o, labels[i]));
+      if (plans.length === 2 && plans[0].end !== plans[1].end) {
+        throw new Error('A、B 组输入帧数不同。请指定两组共有的起止帧。');
+      }
+      const source = $('noiseCore').textContent + '\n' + $('workerCode').textContent;
+      url = URL.createObjectURL(new Blob([source], {type: 'text/javascript'}));
+      worker = new Worker(url);
+      const job = {url, worker, start: performance.now(), total: labels.length};
+      active = job;
+      $('analysisProgress').value = 0;
+      setBusy(true);
+      setStatus('正在读取 ' + labels.join('、') + ' 组数据' + (current ? '，下方保留上次结果。' : '。'));
+      worker.onmessage = ({data}) => {
+        if (active !== job) return;
+        if (data.type === 'progress') {
+          const {label, pass, frame, total} = data;
+          const portion = pass === 1 ? .28 * frame / total :
+            pass === 2 ? .28 + .65 * frame / total : .93 + .07 * frame / total;
+          $('analysisProgress').value = ((label === 'B' ? 1 : 0) + portion) / job.total;
+          const stage = ['','累计时间均值','计算时域噪声与帧差','计算空间图和前后半段相关'][pass];
+          setStatus(label + ' 组 · ' + stage + (pass < 3 ? ' · ' + countText(frame) + ' / ' + countText(total) + ' 帧' : ''));
+          return;
+        }
+        stopWorker(job);
+        if (data.type === 'error') {
+          setStatus(data.message, true);
+          return;
+        }
+        try {
+          showResult(data.packet);
+          current = data.packet;
+          updateDownloads();
+          setStatus('分析完成 · ' + ((performance.now() - job.start) / 1000).toFixed(2) + ' 秒');
+        } catch (error) {
+          current = null;
+          $('resultDetail').hidden = true;
+          $('emptyState').hidden = false;
+          $('resultMeta').textContent = '结果显示失败';
+          updateDownloads();
+          setStatus(error.message, true);
+        }
+      };
+      worker.onerror = event => {
+        if (active !== job) return;
+        stopWorker(job);
+        setStatus(event.message || '分析未完成。请用最新版 Edge 或 Chrome 重试，或者缩小 ROI。', true);
+      };
+      worker.postMessage({sources: selected, options: o});
+    } catch (error) {
+      if (active) stopWorker(active);
+      else {
+        worker?.terminate();
+        if (url) URL.revokeObjectURL(url);
+      }
+      setStatus(error.message, true);
+    }
+  }
+  function cancelAnalysis() {
+    if (!active) return;
+    stopWorker(active);
+    setStatus('已取消本次分析。');
+  }
+  function demoFiles() {
+    const width = 384, height = 288, frames = 24, pixels = width * height;
+    const output = [];
+    for (let group = 0; group < 2; group++) {
+      const buffer = new ArrayBuffer(pixels * frames * 2), bytes = new DataView(buffer);
+      const base = new Float64Array(pixels), stripe = new Float64Array(width);
+      let seed = 11753;
+      function random() {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 4294967296;
+      }
+      for (let x = 0; x < width; x++) stripe[x] = Math.sin(Math.PI * x / 4);
+      for (let y = 0; y < height; y++) {
+        const v = y / (height - 1) - .5;
+        for (let x = 0; x < width; x++) {
+          const u = x / (width - 1) - .5, edge = (u + .17) ** 2 + (v - .11) ** 2;
+          base[y * width + x] = 8183 + (group ? 14 : 24) * Math.exp(-7 * edge) +
+            (group ? 1.8 : 4.2) * stripe[x] + (group ? 1.3 : 2.8) * Math.sin(Math.PI * y / 3) +
+            (random() - .5) * 5;
+        }
+      }
+      for (let f = 0; f < frames; f++) {
+        const common = 2.1 * Math.sin(2 * Math.PI * f / frames);
+        for (let i = 0; i < pixels; i++) {
+          const noise = (random() + random() + random() - 1.5) * (group ? 6 : 10);
+          bytes.setUint16(2 * (f * pixels + i), Math.round(base[i] + common + noise), true);
+        }
+      }
+      const file = new File([buffer], '合成示例_' + 'AB'[group] + '.bin');
+      output.push({files: [file], name: file.name, directory: false});
+    }
+    return output;
+  }
+  function loadDemo() {
+    if (active) return;
+    form.elements.mode.value = 'pair';
+    $('width').value = 384;
+    $('height').value = 288;
+    $('preset').value = '384x288';
+    $('fps').value = 50;
+    $('format').value = 'Y16LE';
+    $('scene').value = 'uniform';
+    for (const id of ['frameStart', 'frameEnd', 'roi', 'badXY', 'shiftXY', 'temperatureC']) $(id).value = '';
+    [sources.A, sources.B] = demoFiles();
+    refreshMode();
+    startAnalysis();
+  }
+  function overview(packet) {
+    const [a, b] = packet.results;
+    const keys = ['temporal_total_rms', 'temporal_no_common_rms', 'low65_rms',
+      'row_hf65_rms', 'column_hf65_rms', 'hp9_2d_rms'];
+    const tiles = keys.map(key => {
+      const tile = make('div', 'kpi');
+      const heading = make('h3');
+      const link = make('a', 'definition-link', METRIC_LABELS[key]);
+      link.href = '#guide-' + key;
+      link.title = '查看计算方法和用途';
+      link.addEventListener('click', () => { $('metricGuide').open = true; });
+      heading.append(link);
+      tile.append(heading);
+      const readings = make('dl');
+      for (const result of packet.results) {
+        const item = make('div');
+        item.append(make('dt', '', result.info.label), make('dd', '', fmt(result.stats[key])));
+        readings.append(item);
+      }
+      tile.append(readings);
+      if (b) {
+        const delta = b.stats[key] - a.stats[key], rel = relativeChange(key, a.stats[key], b.stats[key]);
+        tile.append(make('p', 'delta', 'B−A ' + fmt(delta) + (Number.isFinite(rel) ? '（' + fmt(rel, 2) + '%）' : '')));
+      }
+      return tile;
+    });
+    $('kpis').replaceChildren(...tiles);
+    $('unitLabel').textContent = '单位 ' + packet.unit;
+    $('sceneNote').textContent = packet.options.scene === 'scene' ?
+      '实景高频与帧差包含真实结构及运动，请结合画面解释。' : '先看去共模时域 RMS，再结合横纹、竖纹、二维残余及低频背景。';
+    $('sceneNote').style.marginTop = '9px';
+    const c = packet.comparison;
+    $('comparison').hidden = !c;
+    if (c) {
+      $('comparison').textContent = 'B−A 均值差 ' + fmt(c.global_delta) + ' ' + packet.unit +
+        ' · 去均值图差值 RMS ' + fmt(c.centered_difference_rms) + ' ' + packet.unit +
+        (packet.options.temperatureC.length ? ' · 温差 ' + fmt(c.delta_temperature_c, 2) +
+          ' ℃ · 归一化 RMS ' + fmt(c.slope_rms_per_c) + ' ' + packet.unit + '/℃' : '');
+    }
+  }
+  function maps(packet) {
+    const [x1, y1, x2, y2] = packet.options.roi;
+    const w = x2 - x1 + 1, h = y2 - y1 + 1;
+    const readout = $('pixelReadout'), hint = '移动到图像上查看原图坐标和数值。';
+    readout.textContent = hint;
+    const figures = MAPS.map(spec => {
+      const bound = Graphics.boundFor(packet.results, spec.key);
+      const card = make('figure', 'map-card'), title = make('h3', '', spec.title);
+      const images = make('div', 'map-canvases' + (packet.results.length === 1 ? ' single' : ''));
+      for (const result of packet.results) {
+        const group = make('div'), canvas = make('canvas');
+        canvas.setAttribute('aria-label', result.info.label + ' 组 ' + spec.title);
+        const values = result.maps[spec.key];
+        Graphics.heatmap(canvas, values, w, h, bound, spec.positive);
+        canvas.addEventListener('pointermove', event => {
+          const rect = canvas.getBoundingClientRect();
+          const x = Math.min(w - 1, Math.max(0, Math.floor((event.clientX - rect.left) * w / rect.width)));
+          const y = Math.min(h - 1, Math.max(0, Math.floor((event.clientY - rect.top) * h / rect.height)));
+          readout.textContent = result.info.label + ' 组 · ' + spec.title + ' · x=' + (x1 + x) + '，y=' +
+            (y1 + y) + ' · ' + fmt(values[y * w + x]) + ' ' + packet.unit;
+        });
+        canvas.addEventListener('pointerleave', () => { readout.textContent = hint; });
+        group.append(make('span', 'map-label', result.info.label + ' 组'), canvas);
+        images.append(group);
+      }
+      const scale = make('div', 'scale-label');
+      scale.append(make('span', '', spec.positive ? '0' : fmt(-bound, 2)), make('span', '', fmt(bound, 2) + ' ' + packet.unit));
+      card.append(title, images, make('div', 'colorbar' + (spec.positive ? ' positive' : '')), scale);
+      return card;
+    });
+    $('mapGrid').replaceChildren(...figures);
+  }
+  function addPlots(target, packet, specs) {
+    target.replaceChildren();
+    for (const spec of specs) {
+      const card = make('figure', 'plot-card'), canvas = make('canvas');
+      canvas.setAttribute('aria-label', spec.title + '，横轴 ' + spec.xLabel);
+      card.append(make('h3', '', spec.title), canvas);
+      target.append(card);
+      let lastWidth = 0;
+      const redraw = () => {
+        const width = Math.round(card.clientWidth - 20);
+        if (width <= 0 || width === lastWidth) return;
+        lastWidth = width;
+        Graphics.plot(canvas, packet, spec, Math.max(width, 230), 196, Math.min(2, window.devicePixelRatio || 1));
+      };
+      plotUpdates.set(card, redraw);
+      observer.observe(card);
+      redraw();
+    }
+  }
+  function table(headers, data) {
+    const element = make('table'), head = make('thead'), headRow = make('tr'), body = make('tbody');
+    for (const header of headers) {
+      const cell = make('th', '', header);
+      cell.scope = 'col';
+      headRow.append(cell);
+    }
+    head.append(headRow);
+    for (const row of data) {
+      const tr = make('tr');
+      for (const field of row) tr.append(make('td', '', typeof field === 'number' ? fmt(field) : field));
+      body.append(tr);
+    }
+    element.append(head, body);
+    return element;
+  }
+  function details(packet) {
+    const [a, b] = packet.results;
+    const rows = Object.keys(a.stats).map(key => {
+      const first = a.stats[key], row = [METRIC_LABELS[key] || key, key, metricUnit(key, packet.unit), first];
+      if (b) {
+        const second = b.stats[key];
+        row.push(second, second - first, relativeChange(key, first, second));
+      }
+      return row;
+    });
+    const columns = ['指标', 'CSV 字段', '单位', 'A'];
+    if (b) columns.push('B', 'B−A', '变化 %');
+    $('metricsTable').replaceChildren(table(columns, rows));
+    const phaseRows = [], splitRows = [];
+    for (const r of packet.results) {
+      const name = r.info.label;
+      for (const axis of ['row','column']) {
+        for (const [period, ptp, percent] of r.phases[axis]) {
+          phaseRows.push([name, axis === 'row' ? '横纹（行）' : '竖纹（列）', String(period), ptp, percent]);
+        }
+      }
+      for (const [i, band] of r.split.names.entries()) {
+        splitRows.push([name, band, ...r.split.values[i], countText(r.split.overlap_pixels)]);
+      }
+    }
+    const phase = make('div', 'table-wrap'), split = make('div', 'table-wrap');
+    phase.append(table(['组别','方向','周期（px）','分相峰峰值','投影能量 %'], phaseRows));
+    split.append(table(['组别','尺度','探测器坐标相关','平移后相关','重叠像素'], splitRows));
+    $('diagnosticTables').replaceChildren(phase, split);
+  }
+  function showResult(packet) {
+    const {options: o, results} = packet;
+    const first = results[0].info.frames;
+    $('resultMeta').textContent = o.format + ' · ' + o.width + '×' + o.height + ' · ' + o.fps + ' Hz · 第 ' +
+      first.join('～') + ' 帧 · ROI [' + o.roi.join(' ') + '] · ' + results.map(r => r.info.label + ' ' + r.info.source).join(' / ');
+    $('downloadStatus').hidden = true;
+    $('emptyState').hidden = true;
+    $('resultDetail').hidden = false;
+    observer.disconnect();
+    plotUpdates.clear();
+    overview(packet);
+    maps(packet);
+    $('chartLegend').replaceChildren(...results.map(result => make('span', '', result.info.label + ' 组')));
+    addPlots($('plotGrid'), packet, CURVES);
+    addPlots($('spectrumGrid'), packet, SPECTRA);
+    details(packet);
+  }
+  function download(blob, name) {
+    const url = URL.createObjectURL(blob), link = make('a');
+    link.href = url;
+    link.download = name;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+  async function downloadPack() {
+    if (!current || exporting) return;
+    const result = current, status = $('downloadStatus');
+    exporting = true;
+    updateDownloads();
+    status.hidden = false;
+    status.textContent = '正在生成图表和结果包…';
+    try {
+      const [maps, profiles] = await Promise.all([Graphics.mapsPNG(result), Graphics.profilesPNG(result)]);
+      const entries = Report.entries(result);
+      entries.push({name: 'maps.png', data: maps}, {name: 'profiles.png', data: profiles});
+      const pack = await Report.zip(entries, (i, n) => {
+        if (current === result) status.textContent = '打包文件 ' + i + ' / ' + n;
+      });
+      const now = new Date(), pad = n => String(n).padStart(2, '0');
+      const date = [now.getFullYear(), now.getMonth() + 1, now.getDate()].map(pad).join('');
+      const time = [now.getHours(), now.getMinutes(), now.getSeconds()].map(pad).join('');
+      const name = 'Noise_118_' + date + '_' + time + '.zip';
+      download(pack, name);
+      if (current === result) status.textContent = '已生成 ' + name + '（' + (pack.size / 1048576).toFixed(2) + ' MiB）';
+    } catch (error) {
+      if (current === result) status.textContent = '打包失败。' + error.message;
+    } finally {
+      exporting = false;
+      updateDownloads();
+    }
+  }
+
+  for (const label of ['A', 'B']) {
+    for (const kind of ['files', 'folder']) {
+      const id = kind + label, input = $(id);
+      document.querySelector('[data-pick="' + id + '"]').addEventListener('click', () => input.click());
+      input.addEventListener('change', () => {
+        setSource(label, input.files, kind === 'folder');
+        input.value = '';
+      });
+    }
+    document.querySelector('[data-clear="' + label + '"]').addEventListener('click', () => {
+      sources[label] = null;
+      refreshSource(label);
+      setStatus('已清除 ' + label + ' 组选择。');
+    });
+    const drop = $('drop' + label);
+    for (const event of ['dragenter', 'dragover']) drop.addEventListener(event, e => {
+      if (!e.dataTransfer.types.includes('Files')) return;
+      e.preventDefault();
+      if (!active) drop.classList.add('over');
+    });
+    drop.addEventListener('dragleave', e => {
+      if (!drop.contains(e.relatedTarget)) drop.classList.remove('over');
+    });
+    drop.addEventListener('drop', e => {
+      e.preventDefault();
+      drop.classList.remove('over');
+      setSource(label, e.dataTransfer.files, false);
+    });
+  }
+  document.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
+  document.addEventListener('drop', e => { if (e.dataTransfer.files.length) e.preventDefault(); });
+  form.addEventListener('submit', e => { e.preventDefault(); startAnalysis(); });
+  form.addEventListener('change', e => { if (e.target.name === 'mode') refreshMode(); });
+  $('scene').addEventListener('change', refreshMode);
+  $('format').addEventListener('change', refreshSources);
+  $('preset').addEventListener('change', () => {
+    if ($('preset').value === 'custom') return;
+    const [width, height] = $('preset').value.split('x');
+    $('width').value = width;
+    $('height').value = height;
+    refreshSources();
+  });
+  for (const id of ['width','height','fps']) $(id).addEventListener('change', () => {
+    const preset = $('width').value + 'x' + $('height').value;
+    $('preset').value = [...$('preset').options].some(option => option.value === preset) ? preset : 'custom';
+    refreshSources();
+  });
+  $('cancelButton').addEventListener('click', cancelAnalysis);
+  $('demoButton').addEventListener('click', loadDemo);
+  $('showMetricGuide').addEventListener('click', () => { $('metricGuide').open = true; });
+  $('downloadSummary').addEventListener('click', () => {
+    if (current) download(new Blob([Report.summary(current)], {type: 'text/csv;charset=utf-8'}), 'summary.csv');
+  });
+  $('downloadZip').addEventListener('click', downloadPack);
+  refreshMode();
+})();
+  </script>
+</body>
+</html>
